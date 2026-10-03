@@ -22,7 +22,10 @@ export function parseImportLine(line: string, source: ImportSource): ImportEntry
   }
   const product = urls.find(url => /^\/(?:.*\/)?p\/MLB\d+(?:\/|$)/.test(url.pathname));
   const externalId = product?.pathname.match(/\/p\/(MLB\d+)(?:\/|$)/)?.[1];
-  if (!product || !externalId) throw new AdminError("Informe a URL de catálogo /p/MLB…; com afiliado, use: link meli.la + espaço + URL do produto.");
+  if (!product || !externalId) {
+    if (urls.length === 1 && urls[0].hostname === "meli.la") return { buyUrl, productUrl: buyUrl, externalId: "" };
+    throw new AdminError("Informe uma URL de catálogo /p/MLB… ou um link meli.la. Você também pode usar: link de afiliado + espaço + URL do produto.");
+  }
   return { buyUrl, productUrl: product.href, externalId };
 }
 export function parseImportText(raw: string) {

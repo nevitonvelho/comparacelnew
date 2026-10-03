@@ -19,7 +19,7 @@ test('import lists preserve affiliate links, remove duplicates and reject arbitr
   assert.equal(parseImportLine(line, 'amazon').buyUrl, line);
   assert.equal(parseImportLine('https://meli.la/abc https://www.mercadolivre.com.br/p/MLB12345678', 'mercadolivre').externalId, 'MLB12345678');
   for (const raw of ['https://localhost/dp/B012345678', 'https://amazon.com.br.evil.test/dp/B012345678', 'https://user@amazon.com.br/dp/B012345678', 'https://amazon.com.br:8443/dp/B012345678', 'http://amazon.com.br/dp/B012345678']) assert.throws(() => parseImportLine(raw, 'amazon'));
-  assert.throws(() => parseImportLine('https://meli.la/abc', 'mercadolivre'));
+  assert.equal(parseImportLine('https://meli.la/abc', 'mercadolivre').externalId, '');
   assert.throws(() => parseImportText(Array.from({length:201}, (_, index) => `https://amzn.to/${index}`).join('\n')));
 });
 test('parsers extract real product data without inventing prices or comparative advantages', () => {
@@ -52,5 +52,23 @@ test('network fetch blocks off-domain redirects and excessive response bodies', 
     await assert.rejects(fetchImportResource('https://amzn.to/abc','amazon'));assert.equal(calls,1);
     globalThis.fetch=async()=>new Response(new Uint8Array(3*1024*1024+1));
     await assert.rejects(fetchImportResource('https://www.amazon.com.br/dp/B012345678','amazon'));
+  } finally {globalThis.fetch=original;}
+});
+
+const resolverUrl = url(compile(await readFile('lib/admin-import-resolver.ts','utf8')).replace('"cheerio"', JSON.stringify(import.meta.resolve('cheerio'))).replace('"./admin-model"', JSON.stringify(adminUrl)).replace('"./admin-import-model"', JSON.stringify(modelUrl)).replace('"./admin-import-fetch"', JSON.stringify(fetchUrl)));
+const {mercadoEntryFromPage,resolveMercadoEntry} = await import(resolverUrl);
+test('short Mercado Livre links resolve safely and preserve affiliate tracking', async () => {
+  const entry = parseImportLine('https://meli.la/31EQLJ3','mercadolivre');
+  assert.equal(mercadoEntryFromPage(entry,'https://www.mercadolivre.com.br/p/MLB12345678','').externalId,'MLB12345678');
+  const canonical = mercadoEntryFromPage(entry,'https://www.mercadolivre.com.br/product','<link rel="canonical" href="https://www.mercadolivre.com.br/p/MLB12345678">');
+  assert.equal(canonical.buyUrl,entry.buyUrl);
+  assert.throws(()=>mercadoEntryFromPage(entry,'https://www.mercadolivre.com.br/perfil','<a href="/p/MLB12345678">Unrelated product</a>'));
+  assert.throws(()=>mercadoEntryFromPage(entry,'https://www.mercadolivre.com.br/product','<link rel="canonical" href="https://evil.example/p/MLB12345678">'));
+  const original = globalThis.fetch;
+  try {
+    let calls=0;globalThis.fetch=async()=>++calls===1 ? new Response(null,{status:302,headers:{location:'https://www.mercadolivre.com.br/p/MLB12345678'}}) : new Response('<h1>Produto</h1>');
+    assert.equal((await resolveMercadoEntry(entry)).externalId,'MLB12345678');
+    globalThis.fetch=async()=>new Response('Forbidden',{status:403});
+    await assert.rejects(resolveMercadoEntry(entry),error=>error.message.includes('Abra-o no navegador'));
   } finally {globalThis.fetch=original;}
 });

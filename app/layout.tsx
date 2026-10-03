@@ -22,7 +22,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#ff6420" };
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const products = await getServerProducts();
-  return <html lang="pt-BR"><body>
+  // Extensions may insert attributes on body before React hydrates it.
+  // Suppression is limited to this element; child components retain diagnostics.
+  return <html lang="pt-BR"><body suppressHydrationWarning>
     {/^GTM-[A-Z0-9]+$/.test(gtmId) && <noscript><iframe src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`} height="0" width="0" style={{ display: "none", visibility: "hidden" }} title="Google Tag Manager" /></noscript>}
     <Suspense fallback={null}><GoogleTagManager /></Suspense>
     <JsonLd data={{ "@context": "https://schema.org", "@type": "Organization", name: siteName, url: siteUrl, logo: absoluteUrl("/brand/comparacel.png") }} />

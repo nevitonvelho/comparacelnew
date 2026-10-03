@@ -111,3 +111,29 @@ test('admin importa arquivo de links, mostra falhas e repete somente os itens co
   const unauthorized = await request.post('/api/admin/import', {headers:{Origin:'http://localhost:3000'},data:{source:'amazon'}});
   expect(unauthorized.status()).toBe(401);
 });
+
+
+test('admin aceita um link meli.la sozinho e envia a fonte correta', async ({ page }) => {
+  const submitted = await mockAdministrator(page);
+  await page.goto('/admin');
+  await page.getByRole('navigation', { name: 'Painel administrativo' }).getByRole('button', { name: 'Importar em massa' }).click();
+  await page.getByRole('combobox',{name:'Fonte',exact:true}).selectOption('mercadolivre');
+  await page.getByLabel('Links dos produtos').fill('https://meli.la/31EQLJ3');
+  await page.getByRole('button',{name:'Iniciar importação'}).click();
+  await expect(page.getByText('Lote concluído.',{exact:false})).toBeVisible();
+  expect(submitted[0]).toMatchObject({source:'mercadolivre',line:'https://meli.la/31EQLJ3'});
+});
+
+test('atributo inserido por extensão no body não causa aviso de hidratação', async ({page}) => {
+  const hydration: string[] = [];
+  page.on('console',message=>{if(message.type()==='error' && /hydrat|server rendered HTML/i.test(message.text())) hydration.push(message.text());});
+  await mockAdministrator(page);
+  await page.addInitScript(() => {
+    const observer = new MutationObserver(() => { if (document.body) { document.body.setAttribute('cz-shortcut-listen','true'); observer.disconnect(); } });
+    observer.observe(document.documentElement ?? document, {childList:true,subtree:true});
+  });
+  await page.goto('/admin');
+  await expect(page.getByRole('heading',{level:1,name:'Visão geral'})).toBeVisible({timeout:30000});
+  await expect(page.locator('body')).toHaveAttribute('cz-shortcut-listen','true');
+  expect(hydration).toEqual([]);
+});
