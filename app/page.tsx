@@ -1,69 +1,8 @@
-import Image from "next/image";
-
+import { UiIcon } from "./components/icons";
+import Link from "next/link";
+import { CategoryOverview } from "./components/category-overview";
+import { HeroCategories } from "./components/hero-categories";
+import { Catalog } from "./components/catalog";
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+  return <main id="conteudo"><section className="hero"><div className="hero-copy"><span className="eyebrow"><span /> COMPARE ANTES. ESCOLHA MELHOR.</span><h1>Compare sua próxima compra.<br /><em>Sem tanta dúvida.</em></h1><p>Celulares, notebooks, TVs, eletrodomésticos e muito mais. Coloque seus favoritos lado a lado e escolha com mais clareza.</p><div className="hero-actions"><Link className="button primary" href="/catalogo">Explorar produtos <UiIcon name="external" /></Link><Link className="button secondary" href="/comparar">Fazer uma comparação <UiIcon name="right" /></Link></div><div className="hero-foot"><span><UiIcon name="check" /> Fichas técnicas completas</span><span><UiIcon name="check" /> Ofertas em um só lugar</span></div></div><div className="hero-art" aria-hidden="true"><div className="orbit" /><HeroCategories /><div className="floating-label"><span><UiIcon name="compare" /></span><div>Mais clareza para decidir.<strong>Seus favoritos, lado a lado.</strong></div></div></div></section><section className="steps" aria-label="Como comparar"><div><span>01</span><p><strong>Encontre seus favoritos</strong>Busque por modelo ou marca.</p></div><div><span>02</span><p><strong>Selecione dois produtos</strong>Use o botão “Comparar” nos cards.</p></div><div><span>03</span><p><strong>Veja as diferenças</strong>Compare fichas e ofertas lado a lado.</p></div></section><section className="community-home-banner"><div><span className="eyebrow">MAIS COMPARADOS</span><h2>Veja o que o pessoal está comparando.</h2><p>Descubra os pares mais acessados nos últimos 7 dias e confira suas diferenças.</p></div><Link href="/comunidade" className="button primary">Ver mais comparados <UiIcon name="right" /></Link></section><CategoryOverview /><Catalog home /><section className="explore-banner"><div><span className="eyebrow">TODA COMPRA MERECE UMA BOA COMPARAÇÃO</span><h2>Sua próxima compra também merece comparação.</h2><p>Explore todas as categorias e compare produtos com a mesma finalidade.</p></div><Link className="button primary" href="/catalogo">Explorar categorias <UiIcon name="right" /></Link></section></main>;
 }

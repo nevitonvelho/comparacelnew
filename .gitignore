@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local migration exports and credentials
+/data/*.json
+/service-account*.json
+!.env.example
+
+/data/media/
+
+/test-results/
+/playwright-report/
+
+firestore-debug.log
+ui-debug.log
