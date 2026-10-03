@@ -816,3 +816,25 @@ button.admin-attention { cursor: pointer; }
   .admin-highlight-row input { flex-basis: 70%; }
   .admin-access h1 { font-size: 29px; }
 }
+
+.admin-import fieldset { border: 0; padding: 0; margin: 20px 0; min-width: 0; }
+.admin-import textarea { width: 100%; resize: vertical; font-family: inherit; min-height: 150px; }
+.admin-import-help { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.admin-import .admin-import-checkbox { display: flex; flex-direction: row; align-items: center; gap: 10px; margin-top: 18px; }
+.admin-import-checkbox input { width: 18px; height: 18px; }
+.admin-import-results { margin-top: 22px; }
+.admin-import-results progress { width: 100%; accent-color: #e65312; height: 10px; }
+.admin-import-counts { display: flex; flex-wrap: wrap; gap: 18px; margin: 16px 0; font-size: 14px; }
+.admin-import-results ul { list-style: none; padding: 0; }
+.admin-import-results li { display: flex; gap: 14px; padding: 18px 0; border-top: 1px solid #e6e8ed; }
+.admin-import-results li > svg { flex-shrink: 0; width: 20px; margin-top: 2px; }
+.admin-import-results li > div { min-width: 0; }
+.admin-import-results small { display: block; color: var(--muted); overflow-wrap: anywhere; margin-top: 5px; }
+.admin-import-results li p { margin: 8px 0 0; }
+
+.admin-import .admin-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.admin-import .admin-filters > label:last-child { grid-column: 1 / -1; }
+.admin-import input[type=file] { max-width: 100%; font-size: 12px; }
+.admin-import-results progress::-webkit-progress-bar { background: #f1f3f5; border-radius: 8px; }
+.admin-import-results progress::-webkit-progress-value { background: #e65312; border-radius: 8px; }
+@media (max-width: 700px) { .admin-import .admin-filters { grid-template-columns: 1fr; } }

@@ -15,4 +15,4 @@ export async function adminRequest<T>(user: User, path: string, init: RequestIni
   if (!response.ok) throw new AdminError(data.error ?? "Não foi possível concluir a operação.", response.status);
   return data as T;
 }
-export const auditLabels: Record<string, string> = { "product.create": "Produto cadastrado", "product.update": "Produto atualizado", "brands.create": "Marca cadastrada", "stores.create": "Loja cadastrada", "image.upload": "Imagem enviada" };
+export const auditLabels: Record<string, string> = { "product.import": "Produto importado", "product.create": "Produto cadastrado", "product.update": "Produto atualizado", "brands.create": "Marca cadastrada", "stores.create": "Loja cadastrada", "image.upload": "Imagem enviada" };

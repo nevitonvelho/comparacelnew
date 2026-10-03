@@ -15,12 +15,15 @@ function specDocument(spec: AdminSpec) {
   const display = spec.type === "bool" ? valueBool === null ? "—" : valueBool ? "Sim" : "Não" : spec.type === "number" ? number === null ? "—" : `${number.toLocaleString("pt-BR", { maximumFractionDigits: 12 })}${spec.unit ? ` ${spec.unit}` : ""}` : spec.value || "—";
   return { keySlug: spec.slug, name: spec.name, group: spec.group, type: spec.type, unit: spec.unit, order: spec.order, higherIsBetter: spec.higherIsBetter, value_number: number, value_text: spec.type === "text" ? spec.value : "", value_bool: valueBool, display };
 }
-export async function saveAdminProduct(db: Firestore, actor: { uid: string; email?: string }, value: unknown, creating: boolean, now = Date.now()) {
+export async function saveAdminProduct(db: Firestore, actor: { uid: string; email?: string }, value: unknown, creating: boolean, now = Date.now(), importSource?: { key: string; externalId: string; storeId: string }) {
   const input = validateAdminProduct(value);
   if (!Object.hasOwn(categoryNames, input.category)) throw new AdminError("Escolha uma categoria cadastrada.");
   const ref = db.collection("products").doc(input.id);
   const audit = db.collection("adminAudit").doc();
   return db.runTransaction(async tx => {
+    const source = importSource ? db.collection("adminImportSources").doc(importSource.key) : null;
+    const sourceDoc = source ? await tx.get(source) : null;
+    if (sourceDoc?.exists && sourceDoc.data()?.productId !== input.id) throw new AdminError("Este produto já foi importado em outra ficha. Atualize a lista e tente novamente.", 409);
     const existing = await tx.get(ref);
     if (creating && existing.exists) throw new AdminError("Já existe um produto com esta URL.", 409);
     if (!creating && !existing.exists) throw new AdminError("Produto não encontrado.", 404);
@@ -34,17 +37,18 @@ export async function saveAdminProduct(db: Firestore, actor: { uid: string; emai
       const store = references[index + 1];
       if (!store.exists) throw new AdminError("Uma das lojas não está cadastrada.");
       const previous = (Array.isArray(old.offers) ? old.offers : []).find((item: Record<string, unknown>) => String(item.storeId ?? item.store) === offer.storeId);
-      return { ...previous, id: previous?.id ?? offer.id, storeId: offer.storeId, store: store.data()!.legacyId ?? store.id, storeName: string(store.data()!.name), url: offer.url, priceCents: offer.price === null ? null : Math.round(offer.price * 100), price: offer.price, is_available: offer.available, currency: "BRL" };
+      return { ...previous, ...(importSource?.storeId === offer.storeId ? { external_id: importSource.externalId } : {}), id: previous?.id ?? offer.id, storeId: offer.storeId, store: store.data()!.legacyId ?? store.id, storeName: string(store.data()!.name), url: offer.url, priceCents: offer.price === null ? null : Math.round(offer.price * 100), price: offer.price, is_available: offer.available, currency: "BRL" };
     });
     const prices = offers.filter(offer => offer.is_available && offer.priceCents !== null).map(offer => offer.priceCents!);
     const date = new Date(now).toISOString();
     const patch = { name: input.name, slug: input.id, description: input.description, brandId: input.brandId, brand: references[0].data()!.legacyId ?? input.brandId, brandName: string(references[0].data()!.name), categorySlug: input.category, category: categories.docs[0].data().legacyId ?? categories.docs[0].id, isActive: input.isActive, is_active: input.isActive, imageUrl: input.imageUrl || null, overallScore: input.overallScore, overall_score: String(input.overallScore), meta_title: input.metaTitle, meta_description: input.metaDescription, specs: input.specs.map(spec => ({ ...(Array.isArray(old.specs) ? old.specs : []).find((item: Record<string, unknown>) => item.group === spec.group && item.keySlug === spec.slug), ...specDocument(spec) })), offers, highlights: input.highlights.map(item => ({ ...(Array.isArray(old.highlights) ? old.highlights : []).find((previous: Record<string, unknown>) => previous.kind === item.kind && previous.text === item.text), ...item })), bestPriceCents: prices.length ? Math.min(...prices) : null, label: input.highlights.find(item => item.kind === "pro")?.text ?? "Ficha técnica", adminRevision: input.revision + 1, updated_at: date, updatedAt: Timestamp.fromMillis(now), ...(creating ? { created_at: date } : {}) };
     if (creating) tx.create(ref, patch); else tx.set(ref, patch, { merge: true });
+    if (source && importSource) tx.set(source, { productId: input.id, externalId: importSource.externalId, updatedAt: Timestamp.fromMillis(now) });
     for (const offer of offers) {
       const previous = (Array.isArray(old.offers) ? old.offers : []).find((item: Record<string, unknown>) => String(item.storeId ?? item.store) === offer.storeId);
       if (offer.is_available && offer.priceCents !== null && (previous?.priceCents !== offer.priceCents)) tx.create(db.collection("priceHistory").doc(), { productSlug: input.id, storeId: offer.storeId, store: offer.store, priceCents: offer.priceCents, price: offer.price, recorded_at: date, source: "admin" });
     }
-    tx.create(audit, { action: creating ? "product.create" : "product.update", productId: input.id, name: input.name, actorUid: actor.uid, actorEmail: actor.email ?? "", createdAt: Timestamp.fromMillis(now), beforeActive: creating ? null : old.isActive === true, afterActive: input.isActive });
+    tx.create(audit, { action: importSource ? "product.import" : creating ? "product.create" : "product.update", productId: input.id, name: input.name, actorUid: actor.uid, actorEmail: actor.email ?? "", createdAt: Timestamp.fromMillis(now), beforeActive: creating ? null : old.isActive === true, afterActive: input.isActive });
     return adminProductFromData(input.id, { ...old, ...patch });
   });
 }

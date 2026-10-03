@@ -16,6 +16,12 @@ async function mockAdministrator(page: Page) {
   await page.route('**/api/admin/**', async route => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (path.endsWith('/import')) {
+      const body = request.postDataJSON(); submitted.push(body);
+      const isSecond = body.line.includes('B098765432');
+      if (isSecond && submitted.filter(item => String(item.line).includes('B098765432')).length === 1) return route.fulfill({ status: 502, json: {error: 'A fonte recusou o acesso.'} });
+      return route.fulfill({json: {product: {...products[0], name: isSecond ? 'Segundo produto importado' : 'Primeiro produto importado'}, created: true, warnings: []}});
+    }
     if (path.endsWith('/session')) return route.fulfill({ json: { uid: 'test-admin', email: 'admin@example.com' } });
     if (path.endsWith('/dashboard')) return route.fulfill({ json: { total: products.length, active: products.filter(product => product.isActive).length, noImage: products.length, noPrice: 0, productViews: 123, comparisonViews: 45, reactions: 9, offers: 1, audit: [] } });
     if (path.endsWith('/products') && request.method() === 'GET') return route.fulfill({ json: { products, brands: [{ id: 'marca', name: 'Marca de teste', slug: 'marca' }], stores: [{ id: 'loja', name: 'Loja de teste', slug: 'loja' }], categories: [{ id: 'cafeteiras', name: 'Cafeteiras' }] } });
@@ -79,4 +85,29 @@ test('admin edita preço e ficha técnica, cria rascunho e funciona no celular',
   await expect(page.getByText('Produto salvo com sucesso.')).toBeVisible();
   expect(submitted[1]).toMatchObject({ id: 'nova-cafeteira', isActive: false, revision: 0 });
   expect(errors).toEqual([]);
+});
+
+
+test('admin importa arquivo de links, mostra falhas e repete somente os itens com erro', async ({ page, request }) => {
+  const submitted = await mockAdministrator(page);
+  await page.goto('/admin');
+  await page.getByRole('navigation', { name: 'Painel administrativo' }).getByRole('button', { name: 'Importar em massa' }).click();
+  await page.getByLabel('Arquivo de links (.txt)').setInputFiles({name:'produtos.txt',mimeType:'text/plain',buffer:Buffer.from('# lista\nhttps://www.amazon.com.br/dp/B012345678?tag=owner\nhttps://www.amazon.com.br/dp/B098765432\nhttps://www.amazon.com.br/dp/B012345678?tag=owner')});
+  await page.getByRole('button', {name:'Iniciar importação'}).click();
+  await expect(page.getByText('Lote concluído.', {exact:false})).toBeVisible({timeout:30000});
+  await expect(page.getByText('1 criados', {exact:true})).toBeVisible();
+  await expect(page.getByText('1 falhas', {exact:true})).toBeVisible();
+  expect(submitted).toHaveLength(2);
+  expect(submitted[0]).toMatchObject({source:'amazon',category:'cafeteiras',downloadImages:true,line:'https://www.amazon.com.br/dp/B012345678?tag=owner'});
+  await page.getByRole('button', {name:'Repetir itens com falha'}).click();
+  await expect(page.getByText('0 falhas', {exact:true})).toBeVisible({timeout:30000});
+  expect(submitted).toHaveLength(3);
+  expect(submitted[2].line).toContain('B098765432');
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await expect(page.getByRole('heading', {level:1,name:'Importar em massa'})).toBeVisible();
+  await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); window.scrollTo(0, 0); });
+  await page.screenshot({path:'test-results/admin-import-mobile.png',fullPage:true});
+  const unauthorized = await request.post('/api/admin/import', {headers:{Origin:'http://localhost:3000'},data:{source:'amazon'}});
+  expect(unauthorized.status()).toBe(401);
 });

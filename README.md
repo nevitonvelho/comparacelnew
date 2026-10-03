@@ -228,3 +228,13 @@ Cada alteração de produto tem uma versão: se outra edição salvou a ficha an
 Imagens em JPG, PNG ou WebP são validadas pelo conteúdo, tamanho (até 5 MB), dimensões (até 5.000 px por lado e 16 milhões de pixels) e ausência de animação. O envio cria um arquivo novo em `products/admin/`; a imagem só entra na ficha ao salvar. Substituições não apagam arquivos antigos. O catálogo público tem cache em memória de até 60 segundos, invalidado pelo salvamento no processo que atende à alteração.
 
 Os testes do emulador usam `demo-comparacel` para verificar criação, edição, rascunhos, referências, preços, histórico, auditoria, concorrência e bloqueio de escritas diretas. O teste de interface usa uma identidade simulada e intercepta todas as APIs administrativas, sem conceder privilégios nem alterar produtos reais.
+
+### Cadastro em massa pelo painel
+
+Em `/admin`, abra **Importar em massa**, escolha a fonte e a categoria e envie um `.txt` ou cole os links. Amazon: um link `amazon.com.br/dp/ASIN` ou `amzn.to` por linha. Mercado Livre: uma URL de catálogo `/p/MLB…` por linha; para afiliados, use `https://meli.la/seu-link https://www.mercadolivre.com.br/p/MLB12345678`. Links de compra são preservados. Comentários `#`, linhas vazias e linhas idênticas são ignorados.
+
+O lote processa até 200 linhas, com intervalo mínimo de quatro segundos, progresso, interrupção após o item atual e repetição dos itens com erro. Mantenha a aba aberta; o processamento depende dela. O servidor limita a 200 tentativas por hora por administrador e bloqueia importações simultâneas da mesma conta.
+
+Novos produtos ficam desativados para revisão. Marca e loja são cadastradas quando necessário. Imagens válidas podem ser copiadas para o Storage; preços e características vêm da fonte. As vantagens de especificações não são inferidas automaticamente. Reimportações usam o identificador da loja, inclusive nas ofertas migradas, para evitar duplicatas. Produtos existentes conservam nome, categoria, publicação, imagem, SEO, nota editorial e especificações editadas; acrescentam características ausentes e atualizam a oferta da fonte. Preço ausente não apaga um preço anterior. O vínculo de origem, a gravação do produto, o histórico de preço e a auditoria são atômicos.
+
+Amazon pode responder com captcha/bloqueio. O importador reporta essa falha sem inventar ficha. Mercado Livre usa a API oficial de catálogo e requer `ML_ACCESS_TOKEN` privado no servidor; quando expirar, atualize o token. Nenhum token é enviado ao navegador. `adminImportSources` e `adminImportBudgets` são privados pelas regras existentes. Downloads aceitam somente os domínios das fontes e seus CDNs conhecidos, validando também redirecionamentos, tamanho e conteúdo das imagens.

@@ -49,6 +49,21 @@ export async function testAdminStore(env) {
     const catalog = await readAdminCatalog(db);
     assert(catalog.products.some(product => product.id === input.id && !product.isActive));
     assert.equal((await db.collection('adminAudit').get()).size, 5);
+    const importSource = compile(await readFile('lib/admin-import-store.ts','utf8')).replace('"./admin-model"', JSON.stringify(model)).replace('"./admin-store"', JSON.stringify(url(source)));
+    const {findImportProduct,persistImportedProduct} = await import(url(importSource));
+    const collected = {name:'Cafeteira importada',brand:'Nova marca',description:'Descrição remota',imageUrl:'',price:99.9,specs:[],externalId:'B012345678',buyUrl:'https://www.amazon.com.br/dp/B012345678?tag=owner'};
+    const imported = await persistImportedProduct(db,actor,'amazon',collected,null,'cafeteiras','');
+    assert.equal(imported.created,true);assert.equal(imported.product.isActive,false);
+    const found = await findImportProduct(db,'amazon',{...collected,name:'Nome remoto diferente'},'cafeteiras');
+    assert.equal(found.id,imported.product.id);
+    const updated = await persistImportedProduct(db,actor,'amazon',{...collected,price:89.9},found,'cafeteiras','');
+    assert.equal(updated.created,false);assert.equal(updated.product.offers[0].price,89.9);
+    assert.equal((await db.collection('products').where('name','==','Cafeteira importada').get()).size,1);
+    assert.equal((await db.doc(`products/${found.id}`).get()).data().offers[0].external_id,'B012345678');
+    assert.equal((await db.collection('priceHistory').where('productSlug','==',found.id).get()).size,2);
+    await assert.rejects(saveAdminProduct(db,actor,{...updated.product,id:'duplicata'},true,Date.now(),{key:'amazon-B012345678',externalId:'B012345678',storeId:updated.product.offers[0].storeId}),error=>error.status===409);
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),'adminImportSources/amazon-B012345678')));
+    console.log('Importação: rascunho, deduplicação, preço, vínculo da fonte e privacidade verificados.');
     console.log('Admin: criação, edição, rascunhos, referências, preço derivado, histórico, auditoria, concorrência e acesso direto bloqueado verificados.');
   } finally { await deleteApp(app); }
 }
