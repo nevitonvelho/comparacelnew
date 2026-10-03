@@ -1,3 +1,4 @@
 import { Account } from "../components/account";
-export const metadata = { title: "Minha conta", robots: { index: false, follow: false } };
+import { pageMetadata } from "@/lib/seo";
+export const metadata = { ...pageMetadata("Minha conta", "Acesse seus favoritos e suas comparações salvas no Comparacel.", "/minha-conta"), robots: { index: false, follow: false } };
 export default function Page() { return <Account />; }

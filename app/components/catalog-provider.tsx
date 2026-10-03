@@ -7,15 +7,16 @@ import { initializeAnalytics } from "@/lib/firebase/client";
 
 type Catalog = { products: Product[]; selected: string[]; status: "loading" | "ready" | "error"; message: string; toggle: (product: Product) => void; choose: (index: number, id: string) => void; setPair: (ids: string[]) => void; clear: () => void; retry: () => void };
 const Context = createContext<Catalog | null>(null);
-export function CatalogProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>([]);
+export function CatalogProvider({ children, initialProducts = [] }: { children: ReactNode; initialProducts?: Product[] }) {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [selected, setSelected] = useState<string[]>([]);
-  const [status, setStatus] = useState<Catalog["status"]>("loading");
+  const [status, setStatus] = useState<Catalog["status"]>(initialProducts.length ? "ready" : "loading");
   const [message, setMessage] = useState("");
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let active = true;
-    loadProducts().then(items => {
+    const request = attempt === 0 && initialProducts.length ? Promise.resolve(initialProducts) : loadProducts();
+    request.then(items => {
       if (!active) return;
       setProducts(items); setStatus("ready");
       try {
@@ -28,7 +29,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       } catch { /* Browser storage is optional. */ }
     }).catch(() => { if (active) setStatus("error"); });
     return () => { active = false; };
-  }, [attempt]);
+  }, [attempt, initialProducts]);
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_FIREBASE_ANALYTICS_ENABLED === "true") void initializeAnalytics().catch(() => {});
   }, []);

@@ -201,3 +201,15 @@ A barra fixa de comparação exibe miniaturas e nomes dos produtos selecionados,
 `/comunidade` apresenta os pares mais acessados nos últimos sete dias (incluindo hoje), filtrados por categoria, com imagens e acesso à ficha. Usar o comparador registra o par automaticamente, sem exigir login ou publicar nome/opinião.
 
 O registro ocorre junto à transação do contador de visitas. Cada navegador conta uma vez por par a cada 30 minutos; inverter os produtos mantém o mesmo registro. A coleção privada `comparisonActivity` mantém somente IDs de produtos, categoria, totais diários da última semana e atualização. `GET /api/popular-comparisons` devolve os 12 maiores totais por categoria, sem identidade de visitante, e lê as contagens atualizadas a cada consulta; a página atualiza a lista a cada minuto. Os dados anteriores à implantação do ranking não são inventados: a lista cresce com os acessos registrados a partir deste recurso. O título “Mais comparados” usa acessos como indicador de interesse, não pessoas únicas.
+
+### SEO, sitemap e Google Tag Manager
+
+O container do projeto Django (`GTM-PN53J4BW`) foi reaproveitado. `NEXT_PUBLIC_GTM_ID` permite trocá-lo e `NEXT_PUBLIC_SITE_URL` define o domínio canônico (padrão `https://comparacel.com.br`). O script e o fallback sem JavaScript estão no layout. A navegação interna envia `comparacel_page_view` ao `dataLayer`, com caminho, URL e título; configurar esse evento como gatilho no painel do GTM depende das tags do container. O Firebase Analytics continua opcional e desativado por padrão.
+
+Produtos, categorias e comparações recebem conteúdo inicial pelo servidor, além de título, descrição, canonical, Open Graph e Twitter. O catálogo público usa cache em memória de 60 segundos; somente campos públicos normalizados são enviados ao navegador. Produtos inativos e pares inválidos retornam 404. Pares invertidos redirecionam permanentemente para a ordem canônica. O servidor da hospedagem precisa das credenciais Firebase Admin já documentadas.
+
+`/sitemap.xml` lista produtos ativos, categorias, marcas e até 5.000 pares válidos já importados/acessados, sem criar todas as combinações possíveis. `/robots.txt` informa o sitemap e bloqueia APIs, administração e conta privada. As fichas possuem JSON-LD de produto, ofertas cadastradas e breadcrumbs, sem apresentar o índice de popularidade como avaliação de compradores. O blog não foi migrado.
+
+As URLs antigas `/compare/{par}`, `/compare`, `/comparacoes` e `/busca` redirecionam permanentemente para os destinos atuais. Categorias e marcas mantêm seus caminhos originais, sem a barra final. O host `www.comparacel.com.br` redireciona para o domínio canônico; DNS e certificado dos dois hosts devem apontar para a hospedagem ao colocar o novo site em produção.
+
+Se a propriedade do Search Console usar verificação por HTML, configure `GOOGLE_SITE_VERIFICATION` com o código dessa propriedade; verificação via DNS permanece no domínio. Após publicar no domínio final, envie `https://comparacel.com.br/sitemap.xml` no Search Console. O código local não altera configurações do painel do Google nem garante indexação imediata.

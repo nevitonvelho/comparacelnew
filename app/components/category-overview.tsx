@@ -10,6 +10,6 @@ export function CategoryOverview() {
   return <section className="category-overview"><div className="section-heading"><div><span className="eyebrow">O QUE VOCÊ QUER COMPARAR?</span><h2>Comece pela categoria.</h2></div><Link href="/catalogo" className="section-link">Explorar tudo <UiIcon name="right" /></Link></div><div className="category-grid">{categories.map(([slug, name]) => {
     const items = products.filter(product => product.category === slug);
     const representative = items.find(product => product.imageUrl);
-    return <Link key={slug} href={`/catalogo?categoria=${slug}`}><ProductImage name={name} url={representative?.imageUrl ?? null} /><strong>{name}<span aria-hidden="true"><UiIcon name="external" /></span></strong><small>{items.length} produtos</small></Link>;
+    return <Link key={slug} href={`/${slug}`}><ProductImage name={name} url={representative?.imageUrl ?? null} /><strong>{name}<span aria-hidden="true"><UiIcon name="external" /></span></strong><small>{items.length} produtos</small></Link>;
   })}</div></section>;
 }
