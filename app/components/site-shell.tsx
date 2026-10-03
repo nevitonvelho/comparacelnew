@@ -14,14 +14,15 @@ export function Logo() {
 export function Header() {
   const pathname = usePathname();
   const { selected } = useCatalog();
+  if (pathname.startsWith("/admin")) return <header className="site-header"><div className="header admin-site-header"><Logo /><Link href="/" className="section-link">Voltar ao site <UiIcon name="right" /></Link><AuthControl /></div></header>;
   return <header className="site-header"><div className="header"><Logo /><nav aria-label="Navegação principal">{[["/", "Início"], ["/catalogo", "Categorias"], ["/comunidade", "Mais comparados"], ["/comparar", "Comparar"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href || (href !== "/" && pathname.startsWith(href + "/")) ? "page" : undefined}>{label}{href === "/comparar" && selected.length > 0 && <span className="nav-count">{selected.length}</span>}</Link>)}</nav><AuthControl /></div></header>;
 }
-export function Footer() { return <footer><Logo /><p>Uma boa escolha começa com uma boa comparação.</p><small>Preços e especificações sujeitos a atualização.</small></footer>; }
+export function Footer() { const pathname = usePathname(); if (pathname.startsWith("/admin")) return null; return <footer><Logo /><p>Uma boa escolha começa com uma boa comparação.</p><small>Preços e especificações sujeitos a atualização.</small></footer>; }
 export function ComparisonBar() {
   const { selected, products, toggle, clear, message } = useCatalog();
   const pathname = usePathname();
   const selection = selected.map(id => products.find(product => product.id === id)).filter(product => product !== undefined);
-  if (!selection.length || pathname.startsWith("/comparar")) return <span className="sr-only" role="status">{message}</span>;
+  if (!selection.length || pathname.startsWith("/comparar") || pathname.startsWith("/admin")) return <span className="sr-only" role="status">{message}</span>;
   return <aside className="comparison-bar" aria-label="Produtos para comparar">
     <div className="bar-heading"><strong><UiIcon name="compare" /> Comparar</strong><small>{selection.length} de 2 produtos</small><span className="sr-only" role="status">{message}</span></div>
     <div className="bar-products">{selection.map(product=><article className="bar-product" key={product.id}>

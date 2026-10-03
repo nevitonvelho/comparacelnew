@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { testReactions } from './reactions-emulator.mjs';
+import { testAdminStore } from './admin-emulator.mjs';
 import ts from 'typescript';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore as adminDatabase } from 'firebase-admin/firestore';
@@ -95,5 +96,6 @@ try {
   console.log('Contadores validados: concorrência, recarga, 30 minutos, pares canônicos, totais de gostei e privacidade.');
  } finally {await deleteApp(admin);}
  await testReactions(env);
+ await testAdminStore(env);
  console.log('Regras validadas: dono da conta, isolamento, visitantes, produtos ativos, pares compatíveis e remoção.');
 } finally {await env.cleanup();}

@@ -6,6 +6,7 @@ export type Offer = { id: string; store: string; url: string | null; price: numb
 export type Product = {
   id: string; name: string; brand: string; category: string; score: string;
   price: number | null; imageUrl: string | null; label: string; specs: Spec[];
+  description?: string; metaTitle?: string; metaDescription?: string;
   offers: Offer[]; highlights: { kind: string; text: string }[];
 };
 export const categoryNames: Record<string, string> = {

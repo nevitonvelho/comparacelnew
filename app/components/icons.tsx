@@ -4,7 +4,7 @@ import {
   RiArrowLeftRightLine,RiCheckLine,RiHeartLine,RiHeartFill,RiBookmarkLine,
   RiBookmarkFill,RiImageLine,RiSearchLine,RiCloseLine,RiAddLine,
   RiCornerDownRightLine,RiEmotionSadLine,RiEmotionHappyLine,RiEmotionLaughLine,
-  RiShareForwardLine,
+  RiShareForwardLine,RiDashboardLine,RiBox3Line,RiStore2Line,RiPencilLine,RiUploadCloud2Line,RiShieldKeyholeLine,RiSaveLine,RiBarChartLine,RiEyeLine,RiDeleteBinLine,
 } from "@remixicon/react";
 const icons={
   external:RiArrowRightUpLine,downtrend:RiArrowRightDownLine,right:RiArrowRightLine,
@@ -13,7 +13,7 @@ const icons={
   bookmarkFilled:RiBookmarkFill,image:RiImageLine,search:RiSearchLine,
   close:RiCloseLine,add:RiAddLine,choice:RiCornerDownRightLine,
   sad:RiEmotionSadLine,happy:RiEmotionHappyLine,delighted:RiEmotionLaughLine,
-  share:RiShareForwardLine,
+  share:RiShareForwardLine,dashboard:RiDashboardLine,product:RiBox3Line,store:RiStore2Line,edit:RiPencilLine,upload:RiUploadCloud2Line,shield:RiShieldKeyholeLine,save:RiSaveLine,chart:RiBarChartLine,eye:RiEyeLine,remove:RiDeleteBinLine,
 };
 export function UiIcon({name,className=""}:{name:keyof typeof icons;className?:string}) {
   const Icon=icons[name];

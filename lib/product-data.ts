@@ -12,7 +12,7 @@ function safeUrl(value: unknown): string | null {
 export function productFromData(id: string, data: Record<string, unknown>): Product {
     const price = number(data.bestPriceCents);
     return {
-      id: id, name: text(data.name), brand: text(data.brandName), category: text(data.categorySlug, "outros"),
+      id, description: text(data.description, ""), metaTitle: text(data.meta_title, ""), metaDescription: text(data.meta_description, ""), name: text(data.name), brand: text(data.brandName), category: text(data.categorySlug, "outros"),
       score: typeof data.overallScore === "number" ? data.overallScore.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "—",
       price: price === null ? null : price / 100,
       imageUrl: typeof data.imageUrl === "string" && data.imageUrl.startsWith("https://firebasestorage.googleapis.com/v0/b/comparacel.firebasestorage.app/o/") ? data.imageUrl : null,

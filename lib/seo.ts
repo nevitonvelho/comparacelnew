@@ -13,6 +13,7 @@ export function pageMetadata(title: string, description: string, path: string, i
   };
 }
 export function productDescription(product: Product) {
+  if (product.metaDescription) return product.metaDescription;
   return `Confira preços, ofertas e a ficha técnica de ${product.name}. Compare com outros produtos de ${categoryNames[product.category] ?? product.category} no Comparacel.`;
 }
 export function productSchema(product: Product) {

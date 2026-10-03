@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import ts from 'typescript';
+import { initializeApp, deleteApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { assertFails } from '@firebase/rules-unit-testing';
+const compile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+const url = source => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
+export async function testAdminStore(env) {
+  const model = url(compile(await readFile('lib/admin-model.ts', 'utf8')));
+  const products = url(compile(await readFile('lib/product-model.ts', 'utf8')));
+  const source = compile(await readFile('lib/admin-store.ts', 'utf8')).replace('"firebase-admin/firestore"', JSON.stringify(import.meta.resolve('firebase-admin/firestore'))).replace('"./admin-model"', JSON.stringify(model)).replace('"./product-model"', JSON.stringify(products));
+  const { saveAdminProduct, createAdminReference, readAdminCatalog } = await import(url(source));
+  const app = initializeApp({ projectId: 'demo-comparacel' }, 'admin-store-test');
+  const db = getFirestore(app);
+  const actor = { uid: 'owner', email: 'owner@example.com' };
+  try {
+    await db.doc('categories/admin-category').set({ slug: 'cafeteiras', name: 'Cafeteiras' });
+    await db.doc('brands/admin-brand').set({ name: 'Teste', slug: 'admin-brand' });
+    await db.doc('stores/admin-store').set({ name: 'Loja de teste', slug: 'admin-store' });
+    const input = { id: 'admin-cafeteira', revision: 0, name: 'Cafeteira de teste', description: 'Descrição', brandId: 'admin-brand', category: 'cafeteiras', imageUrl: '', isActive: false, overallScore: 7.5, metaTitle: '', metaDescription: '', specs: [{ slug: 'potencia', name: 'Potência', group: 'Energia', type: 'number', value: '1000', unit: 'W', order: 0, higherIsBetter: true }], offers: [{ id: 'offer', storeId: 'admin-store', price: 120.5, url: 'https://shop.example/product', available: true }], highlights: [] };
+    const created = await saveAdminProduct(db, actor, input, true);
+    assert.equal(created.revision, 1);
+    assert.equal((await db.doc('products/admin-cafeteira').get()).data().bestPriceCents, 12050);
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'products/admin-cafeteira')));
+    await assertFails(setDoc(doc(env.authenticatedContext('owner', { admin: true }).firestore(), 'products/forged'), { isActive: true }));
+    const original = (await db.doc('products/admin-cafeteira').get()).data();
+    await db.doc('products/admin-cafeteira').set({ legacyId: 42, ai_review: 'Preservar', offers: original.offers.map(offer => ({ ...offer, external_id: 'MLB-preserve' })), specs: original.specs.map(spec => ({ ...spec, key: 123 })) }, { merge: true });
+    const active = await saveAdminProduct(db, actor, { ...created, isActive: true }, false);
+    await assert.rejects(saveAdminProduct(db, actor, created, false), error => error.status === 409);
+    await assert.rejects(saveAdminProduct(db, actor, { ...active, brandId: 'missing' }, false), error => error.status === 400);
+    const concurrent = await Promise.allSettled([saveAdminProduct(db, actor, { ...active, name: 'Primeira edição' }, false), saveAdminProduct(db, actor, { ...active, name: 'Segunda edição' }, false)]);
+    assert.equal(concurrent.filter(result => result.status === 'fulfilled').length, 1);
+    assert.equal(concurrent.filter(result => result.status === 'rejected' && result.reason.status === 409).length, 1);
+    const stored = (await db.doc('products/admin-cafeteira').get()).data();
+    assert.equal(stored.legacyId, 42);
+    assert.equal(stored.ai_review, 'Preservar');
+    assert.equal(stored.offers[0].external_id, 'MLB-preserve');
+    assert.equal(stored.specs[0].key, 123);
+    assert.equal(stored.specs[0].display, '1.000 W');
+    assert.equal((await db.collection('priceHistory').where('productSlug', '==', input.id).get()).size, 1);
+    await saveAdminProduct(db, actor, { ...active, revision: stored.adminRevision, isActive: false }, false);
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'products/admin-cafeteira')));
+    await assertFails(getDoc(doc(env.authenticatedContext('owner', { admin: true }).firestore(), 'adminAudit/whatever')));
+    const brand = await createAdminReference(db, actor, { kind: 'brands', name: 'Nova marca', slug: 'nova-marca' });
+    assert.equal(brand.id, 'nova-marca');
+    await assert.rejects(createAdminReference(db, actor, { kind: 'brands', name: 'Repetida', slug: 'nova-marca' }), error => error.status === 409);
+    const catalog = await readAdminCatalog(db);
+    assert(catalog.products.some(product => product.id === input.id && !product.isActive));
+    assert.equal((await db.collection('adminAudit').get()).size, 5);
+    console.log('Admin: criação, edição, rascunhos, referências, preço derivado, histórico, auditoria, concorrência e acesso direto bloqueado verificados.');
+  } finally { await deleteApp(app); }
+}

@@ -27,7 +27,7 @@ Para publicar as regras, com a Firebase CLI instalada e autenticada:
 firebase deploy --only firestore --project comparacel
 ```
 
-Este comando publica regras; não publica o site. O painel administrativo ainda não foi implementado.
+Este comando publica regras; não publica o site. O painel administrativo está em `/admin` e usa APIs protegidas no servidor.
 
 ## Migração do Django
 
@@ -213,3 +213,18 @@ Produtos, categorias e comparações recebem conteúdo inicial pelo servidor, al
 As URLs antigas `/compare/{par}`, `/compare`, `/comparacoes` e `/busca` redirecionam permanentemente para os destinos atuais. Categorias e marcas mantêm seus caminhos originais, sem a barra final. O host `www.comparacel.com.br` redireciona para o domínio canônico; DNS e certificado dos dois hosts devem apontar para a hospedagem ao colocar o novo site em produção.
 
 Se a propriedade do Search Console usar verificação por HTML, configure `GOOGLE_SITE_VERIFICATION` com o código dessa propriedade; verificação via DNS permanece no domínio. Após publicar no domínio final, envie `https://comparacel.com.br/sitemap.xml` no Search Console. O código local não altera configurações do painel do Google nem garante indexação imediata.
+
+
+### Painel administrativo
+
+`/admin` oferece métricas agregadas, busca e filtros do catálogo, cadastro/edição de produtos, ativação/desativação, upload de imagens, ofertas por loja, ficha técnica por grupo, pontos positivos/de atenção, nota editorial e campos SEO. Marcas e lojas podem ser cadastradas para uso nas fichas. As categorias existentes são as 11 categorias do catálogo atual. Novos produtos começam como rascunhos e a URL de produtos existentes permanece fixa.
+
+O acesso exige uma conta Google com e-mail verificado e autorização no servidor: configure `ADMIN_EMAILS` com os e-mails autorizados, separados por vírgula, ou atribua a custom claim `admin: true` via Firebase Admin. Sem uma dessas autorizações, o acesso é negado. `ADMIN_EMAILS` nunca deve receber o prefixo `NEXT_PUBLIC_`. O link para administração aparece na conta após a verificação do servidor. Na hospedagem, configure a mesma lista nos segredos do ambiente.
+
+Todas as APIs `/api/admin/*` verificam token, revogação e permissão em cada pedido. Escritas também validam origem, campos, referências e limites. As regras do Firestore e Storage continuam bloqueando escritas diretas; somente o servidor autorizado usa o Firebase Admin. Rascunhos, histórico do painel e auditoria não são disponibilizados nas APIs públicas nem no catálogo enviado ao navegador.
+
+Cada alteração de produto tem uma versão: se outra edição salvou a ficha antes, o servidor responde 409 e pede para reabri-la. A gravação do produto e do registro privado `adminAudit` ocorre na mesma transação. O menor preço disponível é recalculado ao salvar; mudanças de preços conhecidos registram pontos reais em `priceHistory`. Não há exclusão definitiva de produtos no painel.
+
+Imagens em JPG, PNG ou WebP são validadas pelo conteúdo, tamanho (até 5 MB), dimensões (até 5.000 px por lado e 16 milhões de pixels) e ausência de animação. O envio cria um arquivo novo em `products/admin/`; a imagem só entra na ficha ao salvar. Substituições não apagam arquivos antigos. O catálogo público tem cache em memória de até 60 segundos, invalidado pelo salvamento no processo que atende à alteração.
+
+Os testes do emulador usam `demo-comparacel` para verificar criação, edição, rascunhos, referências, preços, histórico, auditoria, concorrência e bloqueio de escritas diretas. O teste de interface usa uma identidade simulada e intercepta todas as APIs administrativas, sem conceder privilégios nem alterar produtos reais.

@@ -6,15 +6,19 @@ import { comparisonSlug, type Product } from "./product-model";
 
 let catalog: { until: number; products: Product[] } | null = null;
 let pending: Promise<Product[]> | null = null;
+let generation = 0;
+export function invalidateServerCatalog() { catalog = null; pending = null; generation++; }
 export const getServerProducts = cache(async (): Promise<Product[]> => {
   if (catalog && catalog.until > Date.now()) return catalog.products;
+  const version = generation;
   pending ??= getAdminDatabase().collection("products").where("isActive", "==", true).get()
     .then(snapshot => snapshot.docs.map(doc => productFromData(doc.id, doc.data())).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")));
+  const request = pending;
   try {
-    const products = await pending;
-    catalog = { until: Date.now() + 60000, products };
+    const products = await request;
+    if (version === generation) catalog = { until: Date.now() + 60000, products };
     return products;
-  } finally { pending = null; }
+  } finally { if (pending === request) pending = null; }
 });
 export async function getServerProduct(id: string) {
   return (await getServerProducts()).find(product => product.id === id);

@@ -1,4 +1,5 @@
 "use client";
+import { usePathname } from "next/navigation";
 import { createContext,useContext,useEffect,useState,type ReactNode } from "react";
 import { collection,onSnapshot } from "firebase/firestore";
 import { getDatabase } from "@/lib/firebase/client";
@@ -10,17 +11,18 @@ type ContextValue={votes:Record<string,Reaction|null>;loading:boolean;error:bool
 const Context=createContext<ContextValue|null>(null);
 export function ReactionProvider({children}:{children:ReactNode}) {
   const {user,login,loading:authLoading}=useAuth();
+  const inAdmin=usePathname().startsWith("/admin");
   const [state,setState]=useState<{uid:string;votes:Record<string,Reaction|null>;error:boolean}|null>(null);
   const [busy,setBusy]=useState<{uid:string;key:string}|null>(null);
   useEffect(()=>{
-    if(!user)return;
+    if(!user||inAdmin)return;
     const uid=user.uid;
     return onSnapshot(collection(getDatabase(),"users",uid,"reactions"),snapshot=>{
       const votes:Record<string,Reaction|null>={};
       for(const document of snapshot.docs){const value=document.data().reaction;if(validReaction(value))votes[document.id]=value;}
       setState({uid,votes,error:false});
     },()=>setState({uid,votes:{},error:true}));
-  },[user]);
+  },[user,inAdmin]);
   const current=user&&state?.uid===user.uid?state:null;
   async function react(kind:PageKind,ids:string[],reaction:Reaction) {
     const identity=pageIdentity(kind,ids);

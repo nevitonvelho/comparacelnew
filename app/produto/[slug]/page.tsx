@@ -8,7 +8,7 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props) {
   const product = await getServerProduct((await params).slug);
   if (!product) notFound();
-  return pageMetadata(`${product.name}: preços e ficha técnica`, productDescription(product), `/produto/${product.id}`, product.imageUrl);
+  return pageMetadata(product.metaTitle || `${product.name}: preços e ficha técnica`, productDescription(product), `/produto/${product.id}`, product.imageUrl);
 }
 export default async function Page({ params }: Props) {
   const { slug } = await params;

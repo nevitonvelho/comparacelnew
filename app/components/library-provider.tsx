@@ -1,4 +1,5 @@
 "use client";
+import { usePathname } from "next/navigation";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
@@ -14,9 +15,10 @@ type Library = { items: Collections; loading: boolean; error: boolean; toggle: (
 const Context = createContext<Library | null>(null);
 export function LibraryProvider({ children }: { children: ReactNode }) {
   const { user, login, loading: authLoading } = useAuth();
+  const inAdmin = usePathname().startsWith("/admin");
   const [state, setState] = useState<{ uid: string; items: Collections; ready: string[]; error: boolean } | null>(null);
   useEffect(() => {
-    if (!user) return;
+    if (!user || inAdmin) return;
     let active = true;
     const uid = user.uid;
     const unsubscribes = (Object.keys(empty) as LibraryKind[]).map(kind => onSnapshot(collection(getDatabase(), "users", uid, kind), snapshot => {
@@ -28,7 +30,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setState(current => ({ uid, items: { ...(current?.uid === uid ? current.items : empty), [kind]: values }, ready: [...new Set([...(current?.uid === uid ? current.ready : []), kind])], error: current?.uid === uid ? current.error : false }));
     }, () => { if (active) setState(current => ({ uid, items: current?.uid === uid ? current.items : empty, ready: current?.uid === uid ? current.ready : [], error: true })); }));
     return () => { active = false; unsubscribes.forEach(unsubscribe => unsubscribe()); };
-  }, [user]);
+  }, [user, inAdmin]);
   const current = user && state?.uid === user.uid ? state : null;
   async function toggle(kind: LibraryKind, productIds: string[]) {
     const account = user ?? await login();
