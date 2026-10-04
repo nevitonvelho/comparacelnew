@@ -20,17 +20,34 @@ export async function findImportProduct(db: Firestore, source: ImportSource, col
   const match = bySource ?? (byName.length === 1 ? byName[0] : undefined);
   return match ? adminProductFromData(match.id, match.data()) : null;
 }
-export function mergeImportedProduct(collected: CollectedProduct, existing: AdminProduct | null, category: string, brandId: string, storeId: string, imageUrl: string): AdminProduct {
+export type ExtensionUpdateMode = "import" | "price" | "full" | "offer" | "unavailable";
+export function mergeImportedProduct(collected: CollectedProduct, existing: AdminProduct | null, category: string, brandId: string, storeId: string, imageUrl: string, mode: ExtensionUpdateMode = "import"): AdminProduct {
+  if(mode === "unavailable") {
+    const previous=existing?.offers.find(offer=>offer.storeId===storeId);
+    if(!existing || !previous)throw new AdminError("Este anúncio precisa estar vinculado ao produto.");
+    return {...existing,offers:existing.offers.map(offer=>offer.storeId===storeId?{...offer,available:false}:offer)};
+  }
+  if (existing && (mode === "price" || mode === "offer")) {
+    const previous = existing.offers.find(offer => offer.storeId === storeId);
+    if (mode === "price" && !previous) throw new AdminError("Adicione a oferta desta loja antes de atualizar apenas o preço.");
+    const offer = mode === "price" ? {...previous!, price: collected.price, available:true} : {id: previous?.id ?? `store-${storeId}`, storeId, price: collected.price, url: collected.buyUrl, available: true};
+    return {...existing, offers: [...existing.offers.filter(offer => offer.storeId !== storeId), offer]};
+  }
   const specs = [...(existing?.specs ?? [])];
   for (const spec of collected.specs) if (!specs.some(item => item.group === spec.group && item.slug === spec.slug) && specs.length < 200) specs.push({ ...spec, order: specs.length });
+  if (mode === "full") for (const spec of collected.specs) {
+    const index = specs.findIndex(item => item.group === spec.group && item.slug === spec.slug);
+    if (index >= 0) specs[index] = {...spec, order: specs[index].order, higherIsBetter: specs[index].higherIsBetter};
+  }
   const previousOffer = existing?.offers.find(offer => offer.storeId === storeId);
   const offer = { id: `store-${storeId}`, storeId, price: collected.price ?? previousOffer?.price ?? null, url: collected.buyUrl, available: true };
-  return { id: existing?.id ?? `${slugify(collected.name).slice(0, 180).replace(/-$/, "")}-${collected.externalId.toLowerCase()}`, revision: existing?.revision ?? 0, name: existing?.name ?? collected.name, description: existing?.description || collected.description, brandId: existing?.brandId || brandId, category: existing?.category ?? category, imageUrl: existing?.imageUrl || imageUrl, isActive: existing?.isActive ?? false, overallScore: existing?.overallScore ?? 0, metaTitle: existing?.metaTitle ?? "", metaDescription: existing?.metaDescription ?? "", specs, offers: [...(existing?.offers.filter(item => item.storeId !== storeId) ?? []), offer], highlights: existing?.highlights ?? [] };
+  const refreshed = mode === "full" ? {name: collected.name, description: collected.description || existing?.description || "", brandId, imageUrl: imageUrl || existing?.imageUrl || ""} : {};
+  return { id: existing?.id ?? `${slugify(collected.name).slice(0, 180).replace(/-$/, "")}-${collected.externalId.toLowerCase()}`, revision: existing?.revision ?? 0, name: existing?.name ?? collected.name, description: existing?.description || collected.description, brandId: existing?.brandId || brandId, category: existing?.category ?? category, imageUrl: existing?.imageUrl || imageUrl, isActive: existing?.isActive ?? false, overallScore: existing?.overallScore ?? 0, metaTitle: existing?.metaTitle ?? "", metaDescription: existing?.metaDescription ?? "", specs, offers: [...(existing?.offers.filter(item => item.storeId !== storeId) ?? []), offer], highlights: existing?.highlights.length ? existing.highlights : collected.highlights ?? [], ...refreshed };
 }
-export async function persistImportedProduct(db: Firestore, actor: { uid: string; email?: string }, source: ImportSource, collected: CollectedProduct, existing: AdminProduct | null, category: string, imageUrl: string) {
-  const brandId = existing?.brandId || await ensureImportReference(db, actor, "brands", collected.brand);
+export async function persistImportedProduct(db: Firestore, actor: { uid: string; email?: string }, source: ImportSource, collected: CollectedProduct, existing: AdminProduct | null, category: string, imageUrl: string, mode: ExtensionUpdateMode = "import") {
+  const brandId = (mode !== "full" && existing?.brandId) || await ensureImportReference(db, actor, "brands", collected.brand);
   const storeId = await ensureImportReference(db, actor, "stores", source === "amazon" ? "Amazon" : "Mercado Livre");
-  const input = mergeImportedProduct(collected, existing, category, brandId, storeId, imageUrl);
-  const product = await saveAdminProduct(db, actor, input, !existing, Date.now(), { key: `${source}-${collected.externalId}`, externalId: collected.externalId, storeId });
+  const input = mergeImportedProduct(collected, existing, category, brandId, storeId, imageUrl, mode);
+  const product = await saveAdminProduct(db, actor, input, !existing, Date.now(), { key: `${source}-${collected.externalId}`, externalId: collected.externalId, storeId, priceCondition:collected.priceCondition ?? "standard" });
   return { product, created: !existing };
 }

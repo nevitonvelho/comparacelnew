@@ -2,12 +2,12 @@
 import { UiIcon } from "./icons";
 import Link from "next/link";
 import { useState } from "react";
-import { categoryNames, comparisonSlug } from "@/lib/product-model";
+import { comparisonSlug } from "@/lib/product-model";
 import { useCatalog } from "./catalog-provider";
 import { LoadState } from "./catalog";
 import { ComparisonBoard } from "./comparison-board";
 export function Comparison({ slug }: { slug?: string }) {
-  const { products, selected, toggle, choose, setPair, status, clear, message } = useCatalog();
+  const { categoryNames, products, selected, toggle, choose, setPair, status, clear, message } = useCatalog();
   const [category, setCategory] = useState("celulares");
   const ids = slug ? slug.split("-vs-") : selected;
   const a = products.find(product => product.id === ids[0]);

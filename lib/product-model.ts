@@ -2,8 +2,9 @@ export type Spec = {
   key: string; slug: string; name: string; group: string; order: number;
   display: string; number: number | null; higherIsBetter: boolean | null;
 };
-export type Offer = { id: string; store: string; url: string | null; price: number | null; available: boolean };
+export type Offer = { id: string; storeId?: string; priceUpdatedAt?: string; priceCondition?: "pix" | "standard"; store: string; url: string | null; price: number | null; available: boolean };
 export type Product = {
+  updatedAt?: string;
   id: string; name: string; brand: string; category: string; score: string;
   price: number | null; imageUrl: string | null; label: string; specs: Spec[];
   description?: string; metaTitle?: string; metaDescription?: string;

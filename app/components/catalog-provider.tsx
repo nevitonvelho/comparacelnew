@@ -5,9 +5,11 @@ import { loadProducts } from "@/lib/products";
 import { selectProduct, type Product } from "@/lib/product-model";
 import { initializeAnalytics } from "@/lib/firebase/client";
 
-type Catalog = { products: Product[]; selected: string[]; status: "loading" | "ready" | "error"; message: string; toggle: (product: Product) => void; choose: (index: number, id: string) => void; setPair: (ids: string[]) => void; clear: () => void; retry: () => void };
+import type { CategorySettings } from "@/lib/category-settings";
+import { categoryNames as defaultCategoryNames } from "@/lib/product-model";
+type Catalog = { categorySettings: CategorySettings; categoryNames: Record<string, string>; products: Product[]; selected: string[]; status: "loading" | "ready" | "error"; message: string; toggle: (product: Product) => void; choose: (index: number, id: string) => void; setPair: (ids: string[]) => void; clear: () => void; retry: () => void };
 const Context = createContext<Catalog | null>(null);
-export function CatalogProvider({ children, initialProducts = [] }: { children: ReactNode; initialProducts?: Product[] }) {
+export function CatalogProvider({ children, initialProducts = [], categorySettings = { categories: Object.entries(defaultCategoryNames).map(([id,name],order)=>({id,name,order,showOnHome:true})), homeLimit: 11 } }: { children: ReactNode; initialProducts?: Product[]; categorySettings?: CategorySettings }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [selected, setSelected] = useState<string[]>([]);
   const [status, setStatus] = useState<Catalog["status"]>(initialProducts.length ? "ready" : "loading");
@@ -58,6 +60,6 @@ export function CatalogProvider({ children, initialProducts = [] }: { children: 
     }
     save(valid); setMessage("Seleção atualizada.");
   }
-  return <Context.Provider value={{ products, selected, status, message, toggle, choose, setPair, clear: () => { save([]); setMessage(""); }, retry: () => { setStatus("loading"); setAttempt(value => value + 1); } }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ categorySettings, categoryNames: Object.fromEntries(categorySettings.categories.map(item=>[item.id,item.name])), products, selected, status, message, toggle, choose, setPair, clear: () => { save([]); setMessage(""); }, retry: () => { setStatus("loading"); setAttempt(value => value + 1); } }}>{children}</Context.Provider>;
 }
 export function useCatalog() { const context = useContext(Context); if (!context) throw new Error("CatalogProvider ausente"); return context; }

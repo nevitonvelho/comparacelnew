@@ -1,13 +1,18 @@
 import { Timestamp, type Firestore } from "firebase-admin/firestore";
-import { categoryNames } from "./product-model";
+import { readCategorySettings } from "./category-settings";
 import { AdminError, validateAdminProduct, validateReference, type AdminProduct, type AdminSpec } from "./admin-model";
+function priceDate(value: unknown): string | undefined {
+  const stamp = value as { toDate?: () => Date; seconds?: number; _seconds?: number } | null;
+  const raw = typeof value === "string" ? value : stamp?.toDate ? stamp.toDate().toISOString() : typeof (stamp?.seconds ?? stamp?._seconds) === "number" ? new Date((stamp!.seconds ?? stamp!._seconds!) * 1000).toISOString() : "";
+  return raw && Number.isFinite(Date.parse(raw)) ? new Date(raw).toISOString() : undefined;
+}
 function string(value: unknown) { return typeof value === "string" ? value : ""; }
 export function adminProductFromData(id: string, data: Record<string, unknown>): AdminProduct {
   const specs = (Array.isArray(data.specs) ? data.specs : []).map((spec: Record<string, unknown>, index) => {
     const type: AdminSpec["type"] = ["number", "bool"].includes(String(spec.type)) ? spec.type as "number" | "bool" : "text";
     return { slug: string(spec.keySlug), name: string(spec.name), group: string(spec.group) || "Especificações", type, value: type === "number" ? spec.value_number == null ? "" : String(spec.value_number) : type === "bool" ? spec.value_bool == null ? "" : String(spec.value_bool) : string(spec.value_text) || string(spec.display), unit: string(spec.unit), higherIsBetter: typeof spec.higherIsBetter === "boolean" ? spec.higherIsBetter : null, order: Number(spec.order) || index };
   });
-  return { id, revision: Number(data.adminRevision) || 0, name: string(data.name), description: string(data.description), brandId: String(data.brandId ?? data.brand ?? ""), category: string(data.categorySlug), imageUrl: string(data.imageUrl), isActive: data.isActive === true, overallScore: Number(data.overallScore) || 0, metaTitle: string(data.meta_title), metaDescription: string(data.meta_description), specs, offers: (Array.isArray(data.offers) ? data.offers : []).map((offer: Record<string, unknown>) => ({ id: String(offer.id), storeId: String(offer.storeId ?? offer.store ?? ""), price: offer.priceCents == null ? null : Number(offer.priceCents) / 100, url: string(offer.url), available: offer.is_available === true })), highlights: (Array.isArray(data.highlights) ? data.highlights : []).filter((item: Record<string, unknown>) => item.kind === "pro" || item.kind === "con").map((item: Record<string, unknown>) => ({ kind: item.kind as "pro" | "con", text: string(item.text) })) };
+  return { updatedAt: priceDate(data.updatedAt ?? data.updated_at), id, revision: Number(data.adminRevision) || 0, name: string(data.name), description: string(data.description), brandId: String(data.brandId ?? data.brand ?? ""), category: string(data.categorySlug), imageUrl: string(data.imageUrl), isActive: data.isActive === true, overallScore: Number(data.overallScore) || 0, metaTitle: string(data.meta_title), metaDescription: string(data.meta_description), specs, offers: (Array.isArray(data.offers) ? data.offers : []).map((offer: Record<string, unknown>) => ({ priceUpdatedAt: priceDate(offer.priceCheckedAt), id: String(offer.id), storeId: String(offer.storeId ?? offer.store ?? ""), price: offer.priceCents == null ? null : Number(offer.priceCents) / 100, externalId: string(offer.external_id), url: string(offer.url), available: offer.is_available === true })), highlights: (Array.isArray(data.highlights) ? data.highlights : []).filter((item: Record<string, unknown>) => item.kind === "pro" || item.kind === "con").map((item: Record<string, unknown>) => ({ kind: item.kind as "pro" | "con", text: string(item.text) })) };
 }
 function specDocument(spec: AdminSpec) {
   const number = spec.type === "number" && spec.value ? Number(spec.value) : null;
@@ -15,9 +20,8 @@ function specDocument(spec: AdminSpec) {
   const display = spec.type === "bool" ? valueBool === null ? "—" : valueBool ? "Sim" : "Não" : spec.type === "number" ? number === null ? "—" : `${number.toLocaleString("pt-BR", { maximumFractionDigits: 12 })}${spec.unit ? ` ${spec.unit}` : ""}` : spec.value || "—";
   return { keySlug: spec.slug, name: spec.name, group: spec.group, type: spec.type, unit: spec.unit, order: spec.order, higherIsBetter: spec.higherIsBetter, value_number: number, value_text: spec.type === "text" ? spec.value : "", value_bool: valueBool, display };
 }
-export async function saveAdminProduct(db: Firestore, actor: { uid: string; email?: string }, value: unknown, creating: boolean, now = Date.now(), importSource?: { key: string; externalId: string; storeId: string }) {
+export async function saveAdminProduct(db: Firestore, actor: { uid: string; email?: string }, value: unknown, creating: boolean, now = Date.now(), importSource?: { key: string; externalId: string; storeId: string; priceCondition?: "pix"|"standard" }) {
   const input = validateAdminProduct(value);
-  if (!Object.hasOwn(categoryNames, input.category)) throw new AdminError("Escolha uma categoria cadastrada.");
   const ref = db.collection("products").doc(input.id);
   const audit = db.collection("adminAudit").doc();
   return db.runTransaction(async tx => {
@@ -37,7 +41,7 @@ export async function saveAdminProduct(db: Firestore, actor: { uid: string; emai
       const store = references[index + 1];
       if (!store.exists) throw new AdminError("Uma das lojas não está cadastrada.");
       const previous = (Array.isArray(old.offers) ? old.offers : []).find((item: Record<string, unknown>) => String(item.storeId ?? item.store) === offer.storeId);
-      return { ...previous, ...(importSource?.storeId === offer.storeId ? { external_id: importSource.externalId } : {}), id: previous?.id ?? offer.id, storeId: offer.storeId, store: store.data()!.legacyId ?? store.id, storeName: string(store.data()!.name), url: offer.url, priceCents: offer.price === null ? null : Math.round(offer.price * 100), price: offer.price, is_available: offer.available, currency: "BRL" };
+      return { ...previous, ...(importSource?.storeId === offer.storeId && importSource.priceCondition ? {priceCondition:importSource.priceCondition} : {}), ...((importSource?.storeId === offer.storeId && offer.price!==null) || (offer.price!==null && (previous?.priceCents !== Math.round(offer.price*100) || previous?.url !== offer.url)) ? {priceCheckedAt: Timestamp.fromMillis(now)} : {}), ...(importSource?.storeId === offer.storeId ? { external_id: importSource.externalId } : { external_id: offer.externalId ?? (previous?.url === offer.url ? previous?.external_id ?? "" : "") }), id: previous?.id ?? offer.id, storeId: offer.storeId, store: store.data()!.legacyId ?? store.id, storeName: string(store.data()!.name), url: offer.url, priceCents: offer.price === null ? null : Math.round(offer.price * 100), price: offer.price, is_available: offer.available, currency: "BRL" };
     });
     const prices = offers.filter(offer => offer.is_available && offer.priceCents !== null).map(offer => offer.priceCents!);
     const date = new Date(now).toISOString();
@@ -46,7 +50,7 @@ export async function saveAdminProduct(db: Firestore, actor: { uid: string; emai
     if (source && importSource) tx.set(source, { productId: input.id, externalId: importSource.externalId, updatedAt: Timestamp.fromMillis(now) });
     for (const offer of offers) {
       const previous = (Array.isArray(old.offers) ? old.offers : []).find((item: Record<string, unknown>) => String(item.storeId ?? item.store) === offer.storeId);
-      if (offer.is_available && offer.priceCents !== null && (previous?.priceCents !== offer.priceCents)) tx.create(db.collection("priceHistory").doc(), { productSlug: input.id, storeId: offer.storeId, store: offer.store, priceCents: offer.priceCents, price: offer.price, recorded_at: date, source: "admin" });
+      if (offer.is_available && offer.priceCents !== null && (previous?.priceCents !== offer.priceCents)) tx.create(db.collection("priceHistory").doc(), { productSlug: input.id, storeId: offer.storeId, store: offer.store, priceCents: offer.priceCents, price: offer.price, priceCondition: offer.priceCondition ?? "standard", recorded_at: date, source: "admin" });
     }
     tx.create(audit, { action: importSource ? "product.import" : creating ? "product.create" : "product.update", productId: input.id, name: input.name, actorUid: actor.uid, actorEmail: actor.email ?? "", createdAt: Timestamp.fromMillis(now), beforeActive: creating ? null : old.isActive === true, afterActive: input.isActive });
     return adminProductFromData(input.id, { ...old, ...patch });
@@ -68,7 +72,7 @@ export async function createAdminReference(db: Firestore, actor: { uid: string; 
 export async function readAdminCatalog(db: Firestore) {
   const [products, brands, stores] = await Promise.all([db.collection("products").get(), db.collection("brands").get(), db.collection("stores").get()]);
   const references = (docs: typeof brands.docs) => docs.map(doc => ({ id: doc.id, name: string(doc.data().name), slug: string(doc.data().slug), website: string(doc.data().website) })).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  return { products: products.docs.map(doc => adminProductFromData(doc.id, doc.data())).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")), brands: references(brands.docs), stores: references(stores.docs), categories: Object.entries(categoryNames).map(([id, name]) => ({ id, name })) };
+  return { products: products.docs.map(doc => adminProductFromData(doc.id, doc.data())).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")), brands: references(brands.docs), stores: references(stores.docs), ...await readCategorySettings(db) };
 }
 export async function readAdminDashboard(db: Firestore) {
   const [products, stats, reactions, audit] = await Promise.all([db.collection("products").get(), db.collection("pageStats").get(), db.collection("reactionStats").get(), db.collection("adminAudit").orderBy("createdAt", "desc").limit(20).get()]);

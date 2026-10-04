@@ -229,14 +229,34 @@ Imagens em JPG, PNG ou WebP são validadas pelo conteúdo, tamanho (até 5 MB), 
 
 Os testes do emulador usam `demo-comparacel` para verificar criação, edição, rascunhos, referências, preços, histórico, auditoria, concorrência e bloqueio de escritas diretas. O teste de interface usa uma identidade simulada e intercepta todas as APIs administrativas, sem conceder privilégios nem alterar produtos reais.
 
-### Cadastro em massa pelo painel
+### Cadastro e atualização pela extensão
 
-Em `/admin`, abra **Importar em massa**, escolha a fonte e a categoria e envie um `.txt` ou cole os links. Amazon: um link `amazon.com.br/dp/ASIN` ou `amzn.to` por linha. Mercado Livre: um link curto `meli.la` ou uma URL de catálogo `/p/MLB…` por linha; para afiliados, use `https://meli.la/seu-link https://www.mercadolivre.com.br/p/MLB12345678`. Links de compra são preservados. Comentários `#`, linhas vazias e linhas idênticas são ignorados.
+Em `/admin`, abra **Extensão** para baixar o importador, gerar a chave de conexão ou revogar o acesso. Abra um produto da Amazon ou Mercado Livre no navegador e use a extensão para importar, atualizar apenas o preço, atualizar a ficha ou adicionar a oferta da outra loja. A extensão identifica anúncios vinculados e sugere fichas pelo nome/modelo. Produtos novos ficam como rascunhos para revisão no painel.
 
-O lote processa até 200 linhas, com intervalo mínimo de quatro segundos, progresso, interrupção após o item atual e repetição dos itens com erro. Mantenha a aba aberta; o processamento depende dela. O servidor limita a 200 tentativas por hora por administrador e bloqueia importações simultâneas da mesma conta.
+O painel mantém cadastro e edição manual, publicação, categorias, marcas e lojas. A interface de cadastro por links e a atualização de preços pelo servidor foram retiradas do painel. Consulte [as instruções da extensão](extensions/comparacel-collector/README.md) para instalação e uso.
 
-Novos produtos ficam desativados para revisão. Marca e loja são cadastradas quando necessário. Imagens válidas podem ser copiadas para o Storage; preços e características vêm da fonte. As vantagens de especificações não são inferidas automaticamente. Reimportações usam o identificador da loja, inclusive nas ofertas migradas, para evitar duplicatas. Produtos existentes conservam nome, categoria, publicação, imagem, SEO, nota editorial e especificações editadas; acrescentam características ausentes e atualizam a oferta da fonte. Preço ausente não apaga um preço anterior. O vínculo de origem, a gravação do produto, o histórico de preço e a auditoria são atômicos.
+### Autenticação da importação do Mercado Livre
 
-Amazon pode responder com captcha/bloqueio. O importador reporta essa falha sem inventar ficha. Mercado Livre usa a API oficial de catálogo e requer `ML_ACCESS_TOKEN` privado no servidor; quando expirar, atualize o token. Nenhum token é enviado ao navegador. `adminImportSources` e `adminImportBudgets` são privados pelas regras existentes. Downloads aceitam somente os domínios das fontes e seus CDNs conhecidos, validando também redirecionamentos, tamanho e conteúdo das imagens.
+Configure `ML_ACCESS_TOKEN` no ambiente do servidor. Para renovar automaticamente após HTTP 401, configure também `ML_CLIENT_ID`, `ML_CLIENT_SECRET` e `ML_REFRESH_TOKEN`. Também é possível iniciar apenas com estas três credenciais, sem access token. Reinicie o servidor após alterar o ambiente. Nunca use o prefixo `NEXT_PUBLIC_` nessas credenciais. Tokens renovados ficam em `adminImportCredentials/mercadolivre`, protegido pela regra padrão do Firestore que nega acesso ao cliente. Para substituir uma autorização existente, remova esse documento pelo Admin SDK/console e configure as novas credenciais. Não compartilhe refresh tokens com outro projeto ativo, pois são rotacionados.
 
-Links `meli.la` são resolvidos no servidor quando a fonte permite o acesso. Se houver bloqueio, redirecionamento para perfil ou ausência de uma URL canônica de catálogo, informe também a URL `/p/MLB…` copiada do navegador. O aviso de atributo externo no `body` é suprimido somente nesse elemento, preservando diagnósticos de hidratação nos componentes internos.
+Informe uma URL de catálogo `/p/MLB…`, opcionalmente precedida pelo link de afiliado separado por espaço. O link de afiliado é preservado. Links `meli.la` sozinhos dependem do redirecionamento público e ainda podem receber HTTP 403; fornecer a URL de catálogo evita essa etapa. URLs `/up/MLBU…` são aceitas quando a URL completa contém `pdp_filters=item_id:MLB…` ou `wid=MLB…`. Nesse caso a importação consulta `/items/{id}`, preserva o afiliado e grava uma origem separada `item-MLB…`. Não substitua `/up/` por `/p/`. Se a API não retornar preço ou recusar a consulta de ofertas, a ficha é importada sem preço e o painel pede revisão; preços existentes são preservados.
+
+### Categorias e home
+
+Em **Admin → Categorias**, cadastre nome e URL da nova categoria. Ela fica disponível para edição e importação de produtos. Na mesma tela, escolha as categorias da seção **Comece pela categoria**, informe a ordem (menor primeiro) e a quantidade máxima, e salve. Somente categorias selecionadas com produtos ativos aparecem; 0 oculta todas. Ocultar da home preserva a página e os produtos no catálogo. Os quatro destaques ilustrativos do topo não são alterados por essa configuração.
+
+### Usuários e acessos de funcionários
+
+O painel mostra o total de contas cadastradas no Firebase Authentication (incluindo contas desativadas), e **Usuários e acessos** permite buscar por nome/e-mail e atribuir os perfis Usuário, Funcionário ou Administrador. O funcionário precisa entrar com uma conta Google verificada antes de ser listado. Administradores podem atribuir acessos; funcionários recebem somente as permissões selecionadas para visualizar/cadastrar/editar produtos, importar, gerenciar categorias, cadastrar marcas/lojas ou ver o histórico. Todos os funcionários autorizados podem consultar a visão geral e os dados de referência necessários ao painel. A contagem e a lista de usuários ficam restritas a administradores.
+
+As permissões são armazenadas em `adminUserAccess/{uid}` e lidas no servidor em cada requisição. A regra padrão do Firestore bloqueia acesso direto pelo navegador. Remover um acesso bloqueia as próximas requisições; atualizar o painel atualiza o menu. Cadastrar, editar ou importar produtos também concede visualização de produtos. Funcionários não podem atribuir roles ou permissões. Administradores definidos por `ADMIN_EMAILS` ou pela claim `admin` são preservados e não podem ser alterados pela interface; nenhum administrador pode alterar o próprio acesso. Alterações de acesso ficam registradas no histórico.
+
+### Sugestões de comparação no sino
+
+O avatar abre a conta; o sino sugere comparações para usuários logados com base no produto ou categoria visitados e nos favoritos. Cria somente uma sugestão por vez, com pelo menos dez minutos de intervalo e limite de seis por dia. Um único temporizador pendente é cancelado ao sair da página; não há polling, gravações no Firebase ou envio em segundo plano. Abas ocultas não criam novas mensagens. Os candidatos pertencem à mesma categoria e são priorizados pela proximidade de preço e características.
+
+Os avisos ficam no localStorage por usuário e navegador. Marcar como lido remove imediatamente o registro da mensagem, mantendo apenas o contador diário e os IDs necessários para não repetir a sugestão no dia. Avisos não lidos expiram em 48 horas, com limpeza no próximo acesso, retomada da aba ou vencimento do temporizador. O painel abre automaticamente no primeiro aviso do dia; os próximos incrementam o sino. Limpar os dados do navegador reinicia o histórico e o limite.
+
+### Atualizar preços
+
+Use **Atualizar apenas o preço** na extensão, com a página do produto aberta. O link de afiliado, a ficha e as outras ofertas são preservados. O preço coletado é salvo com histórico e auditoria.

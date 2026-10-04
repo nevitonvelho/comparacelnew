@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 import { inspectAdminImage, MAX_ADMIN_IMAGE_SIZE as maximum } from "@/lib/admin-image";
 export async function POST(request: NextRequest) {
   try {
-    const account = await requireAdministrator(request);
+    const account = await requireAdministrator(request, "products.edit");
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.startsWith("multipart/form-data;")) throw new AdminError("Envie uma imagem.");
     const raw = await readAdminBytes(request, maximum + 100000);

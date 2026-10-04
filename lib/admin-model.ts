@@ -1,4 +1,5 @@
 export class AdminError extends Error {
+  retryAfterMs?: number;
   constructor(message: string, public status = 400) { super(message); }
 }
 export type AdminIdentity = { uid: string; email?: string; email_verified?: boolean; admin?: unknown; firebase?: { sign_in_provider?: string } };
@@ -10,8 +11,8 @@ export function isAdministrator(account: AdminIdentity, allowedEmails: string) {
 export const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 200).replace(/-$/g, "");
 export type AdminReference = { id: string; name: string; slug: string; website?: string };
 export type AdminSpec = { slug: string; name: string; group: string; type: "text" | "number" | "bool"; value: string; unit: string; higherIsBetter: boolean | null; order: number };
-export type AdminOffer = { id: string; storeId: string; price: number | null; url: string; available: boolean };
-export type AdminProduct = { id: string; revision: number; name: string; description: string; brandId: string; category: string; imageUrl: string; isActive: boolean; overallScore: number; metaTitle: string; metaDescription: string; specs: AdminSpec[]; offers: AdminOffer[]; highlights: { kind: "pro" | "con"; text: string }[] };
+export type AdminOffer = { id: string; storeId: string; price: number | null; url: string; available: boolean; externalId?: string; priceUpdatedAt?: string };
+export type AdminProduct = { updatedAt?: string; id: string; revision: number; name: string; description: string; brandId: string; category: string; imageUrl: string; isActive: boolean; overallScore: number; metaTitle: string; metaDescription: string; specs: AdminSpec[]; offers: AdminOffer[]; highlights: { kind: "pro" | "con"; text: string }[] };
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new AdminError("Dados inválidos.");
   return value as Record<string, unknown>;
@@ -67,7 +68,9 @@ export function validateAdminProduct(value: unknown): AdminProduct {
     const offer = object(value);
     const storeId = text(offer.storeId, "Loja", 200, true);
     if (storeId.includes("/")) throw new AdminError("Loja inválida.");
-    return { id: `store-${storeId}`, storeId, price: offer.price === null ? null : Math.round(numeric(offer.price, "Preço", 0.01, 100000000) * 100) / 100, url: publicHttpUrl(offer.url, "Link da oferta"), available: bool(offer.available, "Disponibilidade") };
+    const externalId = offer.externalId === undefined ? undefined : text(offer.externalId, "Identificador da fonte", 100);
+    if (externalId && !/^(?:[A-Z0-9]{10}|(?:item-)?MLB\d+)$/.test(externalId)) throw new AdminError("Identificador da fonte inválido.");
+    return { ...(externalId === undefined ? {} : {externalId}), id: `store-${storeId}`, storeId, price: offer.price === null ? null : Math.round(numeric(offer.price, "Preço", 0.01, 100000000) * 100) / 100, url: publicHttpUrl(offer.url, "Link da oferta"), available: bool(offer.available, "Disponibilidade") };
   });
   if (new Set(offers.map(offer => offer.storeId)).size !== offers.length) throw new AdminError("Cadastre uma oferta por loja para este produto.");
   const highlights = list(input.highlights, "Destaques", 40).map(value => {

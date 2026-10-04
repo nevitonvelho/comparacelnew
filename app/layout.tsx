@@ -1,3 +1,5 @@
+import { readCategorySettings } from "@/lib/category-settings";
+import { getAdminDatabase } from "@/lib/firebase/admin";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { GoogleTagManager } from "./components/google-tag-manager";
@@ -22,12 +24,13 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#ff6420" };
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const products = await getServerProducts();
+  const categorySettings = await readCategorySettings(getAdminDatabase());
   // Extensions may insert attributes on body before React hydrates it.
   // Suppression is limited to this element; child components retain diagnostics.
   return <html lang="pt-BR"><body suppressHydrationWarning>
     {/^GTM-[A-Z0-9]+$/.test(gtmId) && <noscript><iframe src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`} height="0" width="0" style={{ display: "none", visibility: "hidden" }} title="Google Tag Manager" /></noscript>}
     <Suspense fallback={null}><GoogleTagManager /></Suspense>
     <JsonLd data={{ "@context": "https://schema.org", "@type": "Organization", name: siteName, url: siteUrl, logo: absoluteUrl("/brand/comparacel.png") }} />
-    <AuthProvider><LibraryProvider><ReactionProvider><CatalogProvider initialProducts={products}><a className="skip-link" href="#conteudo">Pular para o conteúdo</a><Header />{children}<Footer /><ComparisonBar /></CatalogProvider></ReactionProvider></LibraryProvider></AuthProvider>
+    <AuthProvider><LibraryProvider><ReactionProvider><CatalogProvider initialProducts={products} categorySettings={categorySettings}><a className="skip-link" href="#conteudo">Pular para o conteúdo</a><Header />{children}<Footer /><ComparisonBar /></CatalogProvider></ReactionProvider></LibraryProvider></AuthProvider>
   </body></html>;
 }

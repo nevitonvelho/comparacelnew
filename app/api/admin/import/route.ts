@@ -4,25 +4,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminFailure, adminHeaders, readAdminJson, requireAdministrator } from "@/lib/admin-api";
 import { AdminError } from "@/lib/admin-model";
 import { parseImportLine, type CollectedProduct } from "@/lib/admin-import-model";
-import { parseAmazonProduct, parseMercadoProduct } from "@/lib/admin-import-parser";
+import { fetchAmazonProduct } from "@/lib/admin-import-amazon";
 import { fetchImportResource } from "@/lib/admin-import-fetch";
 import { resolveMercadoEntry } from "@/lib/admin-import-resolver";
+import { fetchMercadoApiProduct } from "@/lib/admin-import-mercado-api";
+import { getMercadoToken } from "@/lib/mercado-token";
 import { findImportProduct, persistImportedProduct } from "@/lib/admin-import-store";
 import { getAdminBucket, getAdminDatabase } from "@/lib/firebase/admin";
 import { inspectAdminImage } from "@/lib/admin-image";
-import { categoryNames } from "@/lib/product-model";
 import { invalidateServerCatalog } from "@/lib/server-catalog";
+import { validateProductCapture, collectedFromProductCapture } from "@/lib/product-capture";
 export const runtime = "nodejs";
 export const maxDuration = 90;
 export async function POST(request: NextRequest) {
   let release: (() => Promise<void>) | undefined;
   try {
-    const account = await requireAdministrator(request);
-    const input = await readAdminJson(request) as { source?: unknown; line?: unknown; category?: unknown; downloadImages?: unknown };
-    if (!input || !["amazon", "mercadolivre"].includes(String(input.source)) || typeof input.line !== "string" || input.line.length > 4500 || typeof input.category !== "string" || !Object.hasOwn(categoryNames, input.category) || typeof input.downloadImages !== "boolean") throw new AdminError("Confira a fonte, a categoria e o link.");
+    const account = await requireAdministrator(request, "import.manage");
+    const input = await readAdminJson(request) as { source?: unknown; line?: unknown; category?: unknown; downloadImages?: unknown; capture?: unknown };
+    if (!input || !["amazon", "mercadolivre"].includes(String(input.source)) || typeof input.line !== "string" || input.line.length > 4500 || typeof input.category !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.category) || typeof input.downloadImages !== "boolean") throw new AdminError("Confira a fonte, a categoria e o link.");
     const source = input.source as "amazon" | "mercadolivre";
-    let entry = parseImportLine(input.line, source);
-    if (source === "mercadolivre" && !process.env.ML_ACCESS_TOKEN) throw new AdminError("Configure ML_ACCESS_TOKEN no servidor para importar do Mercado Livre.", 503);
+    let entry = parseImportLine(input.line.trim(), source);
     const db = getAdminDatabase();
     const categories = await db.collection("categories").where("slug", "==", input.category).limit(1).get();
     if (categories.empty) throw new AdminError("Categoria não cadastrada.");
@@ -38,19 +39,18 @@ export async function POST(request: NextRequest) {
     });
     release = () => db.runTransaction(async tx => { const old = await tx.get(budget); if (old.data()?.lease === lease) tx.update(budget, { lockUntil: 0 }); });
     let collected: CollectedProduct;
-    if (source === "amazon") {
-      const resource = await fetchImportResource(entry.productUrl, "amazon");
-      const resolvedId = entry.externalId || resource.url.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i)?.[1].toUpperCase() || "";
-      collected = parseAmazonProduct(resource.bytes.toString("utf8"), { ...entry, externalId: resolvedId });
+    if (input.capture !== undefined) {
+      const capture=validateProductCapture(input.capture);
+      if(source!==capture.source)throw new AdminError("A loja selecionada não corresponde à página coletada.");
+      collected=collectedFromProductCapture(capture,input.line);
+    } else if (source === "amazon") {
+      collected = await fetchAmazonProduct(entry);
     } else {
       entry = await resolveMercadoEntry(entry);
-      const detail = await fetchImportResource(`https://api.mercadolibre.com/products/${entry.externalId}`, "ml-api", process.env.ML_ACCESS_TOKEN);
-      collected = parseMercadoProduct(JSON.parse(detail.bytes.toString("utf8")), entry);
-      if (collected.price === null) {
-        try { const offers = await fetchImportResource(`https://api.mercadolibre.com/products/${entry.externalId}/items?limit=50`, "ml-api", process.env.ML_ACCESS_TOKEN); const data = JSON.parse(offers.bytes.toString("utf8")); const prices = (data.results ?? []).filter((offer: { condition?: string; price?: unknown }) => offer.condition === "new" && typeof offer.price === "number" && Number.isFinite(offer.price) && offer.price > 0).map((offer: { price: number }) => offer.price); collected.price = prices.length ? Math.min(...prices) : null; } catch { /* A product may be imported without a price when offers are unavailable. */ }
-      }
+      collected = await fetchMercadoApiProduct(entry, getMercadoToken);
     }
     const existing = await findImportProduct(db, source, collected, input.category);
+    if(source==="mercadolivre" && !existing && collected.price===null)throw new AdminError("A API retornou a ficha do catálogo, mas não confirmou um preço. O produto não foi criado. Abra ‘Ir para produto’ no Mercado Livre e informe a URL do anúncio específico (MLB do vendedor, ou URL com wid/item_id). Outra opção é cadastrar o produto e o preço manualmente.",422);
     const warnings: string[] = [];
     if (collected.price === null) warnings.push("Preço não retornado pela fonte; confira a oferta.");
     let imageUrl = "";

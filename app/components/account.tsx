@@ -3,6 +3,7 @@ import { AdminLink } from "./admin-link";
 import { UiIcon } from "./icons";
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth, authError } from "./auth-provider";
 import { useLibrary, type LibraryKind } from "./library-provider";
 import { useCatalog } from "./catalog-provider";
@@ -10,10 +11,15 @@ import { ProductCard } from "./catalog";
 import { AuthControl, LibraryButton } from "./user-actions";
 import { ProductImage } from "./product-image";
 export function Account() {
+  const searchParams = useSearchParams();
+  const view = searchParams.get("aba") ?? "conta";
+  const initialTab: LibraryKind = view === "favoritos" ? "likedProducts" : "savedComparisons";
   const { user, loading: authLoading, logout } = useAuth();
   const { items, loading, error } = useLibrary();
   const { products, status, retry } = useCatalog();
-  const [tab, setTab] = useState<LibraryKind>("savedComparisons");
+  const [selection, setSelection] = useState<{ view: string; tab: LibraryKind }>({ view, tab: initialTab });
+  const tab = selection.view === view ? selection.tab : initialTab;
+  function setTab(next: LibraryKind) { setSelection({ view, tab: next }); }
   const [message, setMessage] = useState("");
   if (authLoading) return <main id="conteudo"><p className="empty" role="status">Carregando sua conta…</p></main>;
   if (!user) return <main id="conteudo" className="account-intro"><span className="eyebrow">SUAS ESCOLHAS EM UM SÓ LUGAR</span><h1>Guarde seus favoritos.<br /><em>Volte quando quiser.</em></h1><p>Entre com Google para salvar comparações e marcar os produtos e comparações de que você gosta.</p><AuthControl /></main>;

@@ -1,9 +1,11 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
+import { getAdminDatabase } from "./firebase/admin";
+import { permissionLabels, type Permission, type StaffAccess } from "./admin-permissions";
 import { getAdminAuth } from "./firebase/admin";
 import { AdminError, isAdministrator } from "./admin-model";
 export const adminHeaders = { "Cache-Control": "no-store, private", "X-Robots-Tag": "noindex, nofollow" };
-export async function requireAdministrator(request: NextRequest) {
+export async function requireAdministrator(request: NextRequest, permission?: Permission | "users.manage") {
   const origin = request.headers.get("origin");
   if ((!["GET", "HEAD"].includes(request.method) || origin) && origin !== request.nextUrl.origin) throw new AdminError("Origem inválida.", 403);
   const bearer = request.headers.get("authorization");
@@ -11,8 +13,17 @@ export async function requireAdministrator(request: NextRequest) {
   let account;
   try { account = await getAdminAuth().verifyIdToken(bearer.slice(7), true); }
   catch { throw new AdminError("Sua sessão expirou. Entre novamente.", 401); }
-  if (!isAdministrator(account, process.env.ADMIN_EMAILS ?? "")) throw new AdminError("Esta conta não tem permissão de administrador.", 403);
-  return account;
+  const access = await getStaffAccess(account);
+  if (access.role === "user" || permission === "users.manage" && access.role !== "administrator" || permission && permission !== "users.manage" && !access.permissions.includes(permission)) throw new AdminError("Sua conta não tem permissão para este módulo.", 403);
+  return { ...account, access };
+}
+export async function getStaffAccess(account: Parameters<typeof isAdministrator>[0]): Promise<StaffAccess> {
+  if (isAdministrator(account, process.env.ADMIN_EMAILS ?? "")) return {role:"administrator",owner:true,permissions:Object.keys(permissionLabels) as Permission[]};
+  if (account.email_verified !== true || account.firebase?.sign_in_provider !== "google.com") return {role:"user",owner:false,permissions:[]};
+  const data=(await getAdminDatabase().doc(`adminUserAccess/${account.uid}`).get()).data();
+  if(data?.role === "administrator") return {role:"administrator",owner:false,permissions:Object.keys(permissionLabels) as Permission[]};
+  const permissions: Permission[] = data?.role === "employee" && Array.isArray(data.permissions) ? data.permissions.filter((value: unknown): value is Permission => typeof value === "string" && Object.hasOwn(permissionLabels,value)) : [];
+  return {role:permissions.length ? "employee":"user",owner:false,permissions};
 }
 export async function readAdminBytes(request: NextRequest, maximum = 400000) {
   if (Number(request.headers.get("content-length") ?? 0) > maximum) throw new AdminError("Arquivo ou formulário muito grande.", 413);

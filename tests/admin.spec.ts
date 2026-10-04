@@ -22,8 +22,8 @@ async function mockAdministrator(page: Page) {
       if (isSecond && submitted.filter(item => String(item.line).includes('B098765432')).length === 1) return route.fulfill({ status: 502, json: {error: 'A fonte recusou o acesso.'} });
       return route.fulfill({json: {product: {...products[0], name: isSecond ? 'Segundo produto importado' : 'Primeiro produto importado'}, created: true, warnings: []}});
     }
-    if (path.endsWith('/session')) return route.fulfill({ json: { uid: 'test-admin', email: 'admin@example.com' } });
-    if (path.endsWith('/dashboard')) return route.fulfill({ json: { total: products.length, active: products.filter(product => product.isActive).length, noImage: products.length, noPrice: 0, productViews: 123, comparisonViews: 45, reactions: 9, offers: 1, audit: [] } });
+    if (path.endsWith('/session')) return route.fulfill({ json: { uid: 'test-admin', email: 'admin@example.com', access: {role:'administrator',permissions:['products.view','products.create','products.edit','import.manage','categories.manage','brands.manage','stores.manage','audit.view']} } });
+    if (path.endsWith('/dashboard')) return route.fulfill({ json: { total: products.length, active: products.filter(product => product.isActive).length, noImage: products.length, noPrice: 0, users: null, productViews: 123, comparisonViews: 45, reactions: 9, offers: 1, audit: [] } });
     if (path.endsWith('/products') && request.method() === 'GET') return route.fulfill({ json: { products, brands: [{ id: 'marca', name: 'Marca de teste', slug: 'marca' }], stores: [{ id: 'loja', name: 'Loja de teste', slug: 'loja' }], categories: [{ id: 'cafeteiras', name: 'Cafeteiras' }] } });
     if (path.includes('/products') && ['POST', 'PATCH'].includes(request.method())) {
       const body = request.postDataJSON();
@@ -88,40 +88,19 @@ test('admin edita preço e ficha técnica, cria rascunho e funciona no celular',
 });
 
 
-test('admin importa arquivo de links, mostra falhas e repete somente os itens com erro', async ({ page, request }) => {
-  const submitted = await mockAdministrator(page);
+test('admin oferece extensão para importar e atualizar sem os controles antigos', async ({ page }) => {
+  await mockAdministrator(page);
   await page.goto('/admin');
-  await page.getByRole('navigation', { name: 'Painel administrativo' }).getByRole('button', { name: 'Importar em massa' }).click();
-  await page.getByLabel('Arquivo de links (.txt)').setInputFiles({name:'produtos.txt',mimeType:'text/plain',buffer:Buffer.from('# lista\nhttps://www.amazon.com.br/dp/B012345678?tag=owner\nhttps://www.amazon.com.br/dp/B098765432\nhttps://www.amazon.com.br/dp/B012345678?tag=owner')});
-  await page.getByRole('button', {name:'Iniciar importação'}).click();
-  await expect(page.getByText('Lote concluído.', {exact:false})).toBeVisible({timeout:30000});
-  await expect(page.getByText('1 criados', {exact:true})).toBeVisible();
-  await expect(page.getByText('1 falhas', {exact:true})).toBeVisible();
-  expect(submitted).toHaveLength(2);
-  expect(submitted[0]).toMatchObject({source:'amazon',category:'cafeteiras',downloadImages:true,line:'https://www.amazon.com.br/dp/B012345678?tag=owner'});
-  await page.getByRole('button', {name:'Repetir itens com falha'}).click();
-  await expect(page.getByText('0 falhas', {exact:true})).toBeVisible({timeout:30000});
-  expect(submitted).toHaveLength(3);
-  expect(submitted[2].line).toContain('B098765432');
-  await page.setViewportSize({width:390,height:844});
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await expect(page.getByRole('heading', {level:1,name:'Importar em massa'})).toBeVisible();
-  await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); window.scrollTo(0, 0); });
-  await page.screenshot({path:'test-results/admin-import-mobile.png',fullPage:true});
-  const unauthorized = await request.post('/api/admin/import', {headers:{Origin:'http://localhost:3000'},data:{source:'amazon'}});
-  expect(unauthorized.status()).toBe(401);
-});
-
-
-test('admin aceita um link meli.la sozinho e envia a fonte correta', async ({ page }) => {
-  const submitted = await mockAdministrator(page);
-  await page.goto('/admin');
-  await page.getByRole('navigation', { name: 'Painel administrativo' }).getByRole('button', { name: 'Importar em massa' }).click();
-  await page.getByRole('combobox',{name:'Fonte',exact:true}).selectOption('mercadolivre');
-  await page.getByLabel('Links dos produtos').fill('https://meli.la/31EQLJ3');
-  await page.getByRole('button',{name:'Iniciar importação'}).click();
-  await expect(page.getByText('Lote concluído.',{exact:false})).toBeVisible();
-  expect(submitted[0]).toMatchObject({source:'mercadolivre',line:'https://meli.la/31EQLJ3'});
+  const navigation=page.getByRole('navigation', { name: 'Painel administrativo' });
+  await navigation.getByRole('button', { name: /Produtos/ }).click();
+  await expect(page.getByRole('heading', { name: 'Atualização de preços' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Atualizar preço/ })).toHaveCount(0);
+  await navigation.getByRole('button', { name: 'Extensão' }).click();
+  await expect(page.getByRole('heading', {level:1,name:'Extensão'})).toBeVisible();
+  await expect(page.getByRole('link', {name:'Baixar extensão'})).toBeVisible();
+  await expect(page.getByRole('button', {name:'Gerar chave de conexão'})).toBeVisible();
+  await expect(page.getByLabel('Arquivo de links (.txt)')).toHaveCount(0);
+  await expect(page.getByRole('button', {name:'Iniciar importação'})).toHaveCount(0);
 });
 
 test('atributo inserido por extensão no body não causa aviso de hidratação', async ({page}) => {
@@ -136,4 +115,35 @@ test('atributo inserido por extensão no body não causa aviso de hidratação',
   await expect(page.getByRole('heading',{level:1,name:'Visão geral'})).toBeVisible({timeout:30000});
   await expect(page.locator('body')).toHaveAttribute('cz-shortcut-listen','true');
   expect(hydration).toEqual([]);
+});
+
+test('controle de preços prioriza ofertas antigas e recarrega após usar a extensão',async({page})=>{
+  await mockAdministrator(page);
+  const now=Date.now();
+  const base={revision:0,description:'',brandId:'marca',category:'cafeteiras',imageUrl:'',isActive:true,overallScore:7,metaTitle:'',metaDescription:'',specs:[],highlights:[],updatedAt:new Date(now).toISOString()};
+  const offer={id:'store-loja',storeId:'loja',price:200,url:'https://www.amazon.com.br/dp/B012345678',externalId:'B012345678',available:true};
+  const products=[{...base,id:'antigo',name:'Preço antigo',offers:[{...offer,priceUpdatedAt:new Date(now-9*86400000).toISOString()}]},{...base,id:'sem-data',name:'Sem data de preço',offers:[offer]},{...base,id:'recente',name:'Preço recente',offers:[{...offer,priceUpdatedAt:new Date(now-3600000).toISOString()}]}];
+  products[0].offers.push({...offer,id:'store-mercado-livre',storeId:'mercado-livre',externalId:'MLB12345',url:'https://meli.la/teste',priceUpdatedAt:new Date(now-3600000).toISOString()});
+  await page.route('**/api/admin/products',route=>route.fulfill({json:{products,brands:[{id:'marca',name:'Marca',slug:'marca'}],stores:[{id:'loja',name:'Amazon',slug:'amazon'},{id:'mercado-livre',name:'Mercado Livre',slug:'mercado-livre'}],categories:[{id:'cafeteiras',name:'Cafeteiras'}]}}));
+  await page.goto('/admin');
+  await page.getByRole('navigation',{name:'Painel administrativo'}).getByRole('button',{name:/Produtos/}).click();
+  await expect(page.getByRole('button',{name:/2\s*Precisam de atualização/i})).toBeVisible();
+  await expect(page.getByRole('link',{name:/Abrir Amazon.*Preço antigo: Há 9 dias/})).toHaveAttribute('href','https://www.amazon.com.br/dp/B012345678');
+  await expect(page.getByRole('link',{name:/Abrir Mercado Livre.*Preço antigo: Conferido hoje/})).toHaveAttribute('href','https://www.mercadolivre.com.br/p/MLB12345');
+  await expect(page.locator('.admin-product-row').filter({hasText:'Preço antigo'}).locator('.price-age-link')).toHaveCount(2);
+  await expect(page.locator('.admin-product-row').first()).toContainText('Sem data de preço');
+  await page.getByRole('combobox',{name:'Atualização dos preços',exact:true}).selectOption('due');
+  await expect(page.locator('.admin-product-row')).toHaveCount(2);
+  await page.getByRole('combobox',{name:'Conferir a cada',exact:true}).selectOption('14');
+  await expect(page.locator('.admin-product-row')).toHaveCount(1);
+  await page.getByRole('combobox',{name:'Conferir a cada',exact:true}).selectOption('7');
+  products[0].offers[0]={...products[0].offers[0],priceUpdatedAt:new Date(now).toISOString()};
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('.admin-product-row')).toHaveCount(1);
+  await page.getByRole('combobox',{name:'Atualização dos preços',exact:true}).selectOption('all');
+  await expect(page.locator('.admin-product-row')).toHaveCount(3);
+  await page.screenshot({path:'test-results/admin-price-freshness-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:'test-results/admin-price-freshness-mobile.png',fullPage:true});
 });

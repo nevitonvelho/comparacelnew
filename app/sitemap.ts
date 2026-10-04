@@ -1,7 +1,8 @@
+import { readCategorySettings } from "@/lib/category-settings";
 import type { MetadataRoute } from "next";
 import { getAdminDatabase } from "@/lib/firebase/admin";
 import { getServerBrands, getServerProducts } from "@/lib/server-catalog";
-import { categoryNames, comparisonSlug } from "@/lib/product-model";
+import { comparisonSlug } from "@/lib/product-model";
 import { absoluteUrl } from "@/lib/seo";
 export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -9,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const db = getAdminDatabase();
   const [legacy, activity] = await Promise.all([db.collection("comparisons").limit(5000).get(), db.collection("comparisonActivity").limit(5000).get()]);
   const entries: MetadataRoute.Sitemap = ["/", "/catalogo", "/comparar", "/comunidade"].map(path => ({ url: absoluteUrl(path), changeFrequency: "weekly", priority: path === "/" ? 1 : 0.7 }));
-  for (const category of Object.keys(categoryNames)) if (products.some(product => product.category === category)) entries.push({ url: absoluteUrl(`/${category}`), changeFrequency: "weekly", priority: 0.7 });
+  for (const category of (await readCategorySettings(db)).categories.map(item=>item.id)) if (products.some(product => product.category === category)) entries.push({ url: absoluteUrl(`/${category}`), changeFrequency: "weekly", priority: 0.7 });
   for (const product of products) entries.push({ url: absoluteUrl(`/produto/${product.id}`), ...(product.imageUrl ? { images: [product.imageUrl] } : {}), changeFrequency: "weekly", priority: 0.8 });
   entries.push({ url: absoluteUrl("/marcas"), changeFrequency: "monthly", priority: 0.5 });
   for (const brand of await getServerBrands()) entries.push({ url: absoluteUrl(`/marca/${brand.slug}`), changeFrequency: "monthly", priority: 0.5 });

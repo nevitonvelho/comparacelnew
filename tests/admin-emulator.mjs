@@ -10,7 +10,8 @@ const url = source => `data:text/javascript;base64,${Buffer.from(source).toStrin
 export async function testAdminStore(env) {
   const model = url(compile(await readFile('lib/admin-model.ts', 'utf8')));
   const products = url(compile(await readFile('lib/product-model.ts', 'utf8')));
-  const source = compile(await readFile('lib/admin-store.ts', 'utf8')).replace('"firebase-admin/firestore"', JSON.stringify(import.meta.resolve('firebase-admin/firestore'))).replace('"./admin-model"', JSON.stringify(model)).replace('"./product-model"', JSON.stringify(products));
+  const categorySettings = url(compile(await readFile("lib/category-settings.ts", "utf8")).replace('"./product-model"', JSON.stringify(products)));
+  const source = compile(await readFile('lib/admin-store.ts', 'utf8')).replace('"firebase-admin/firestore"', JSON.stringify(import.meta.resolve('firebase-admin/firestore'))).replace('"./admin-model"', JSON.stringify(model)).replace('"./product-model"', JSON.stringify(products)).replace('"./category-settings"',JSON.stringify(categorySettings));
   const { saveAdminProduct, createAdminReference, readAdminCatalog } = await import(url(source));
   const app = initializeApp({ projectId: 'demo-comparacel' }, 'admin-store-test');
   const db = getFirestore(app);

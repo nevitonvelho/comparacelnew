@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  serverExternalPackages: ["playwright-core", "@sparticuz/chromium"],
+  outputFileTracingIncludes: {
+    "/api/admin/products/*/price": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+  },
   async redirects() {
     return [
       { source: "/compare/:slug", destination: "/comparar/:slug", permanent: true },

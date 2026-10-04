@@ -17,7 +17,21 @@ export function Header() {
   if (pathname.startsWith("/admin")) return <header className="site-header"><div className="header admin-site-header"><Logo /><Link href="/" className="section-link">Voltar ao site <UiIcon name="right" /></Link><AuthControl /></div></header>;
   return <header className="site-header"><div className="header"><Logo /><nav aria-label="Navegação principal">{[["/", "Início"], ["/catalogo", "Categorias"], ["/comunidade", "Mais comparados"], ["/comparar", "Comparar"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href || (href !== "/" && pathname.startsWith(href + "/")) ? "page" : undefined}>{label}{href === "/comparar" && selected.length > 0 && <span className="nav-count">{selected.length}</span>}</Link>)}</nav><AuthControl /></div></header>;
 }
-export function Footer() { const pathname = usePathname(); if (pathname.startsWith("/admin")) return null; return <footer><Logo /><p>Uma boa escolha começa com uma boa comparação.</p><small>Preços e especificações sujeitos a atualização.</small></footer>; }
+export function Footer() {
+  const pathname = usePathname();
+  const { categorySettings } = useCatalog();
+  if (pathname.startsWith("/admin")) return null;
+  const categories=categorySettings.categories.filter(category=>category.showOnHome).slice(0,6);
+  return <footer className="site-footer"><div className="footer-inner">
+    <div className="footer-intro"><div><span className="eyebrow">COMPARE ANTES DE ESCOLHER</span><h2>Sua próxima escolha começa aqui.</h2></div><Link href="/catalogo" className="button primary">Explorar produtos <UiIcon name="right" /></Link></div>
+    <div className="footer-grid">
+      <div className="footer-brand"><Logo /><p>Preços, ofertas e fichas técnicas no mesmo lugar. Encontre as diferenças que fazem sentido para você.</p><Link href="/comparar" className="footer-brand-link">Montar uma comparação <UiIcon name="right" /></Link></div>
+      <nav className="footer-nav" aria-label="Explore o Comparacel"><h3>Explore</h3><Link href="/">Início</Link><Link href="/catalogo">Todos os produtos</Link><Link href="/comparar">Comparar produtos</Link><Link href="/comunidade">Mais comparados</Link><Link href="/minha-conta">Minha conta e favoritos</Link></nav>
+      <nav className="footer-nav" aria-label="Categorias no rodapé"><h3>Categorias</h3>{categories.map(category=><Link key={category.id} href={`/${category.id}`}>{category.name}</Link>)}<Link href="/catalogo" className="footer-all-categories">Ver todas as categorias <UiIcon name="right" /></Link></nav>
+    </div>
+    <div className="footer-bottom"><small>© {new Date().getFullYear()} Comparacel</small><p>Preços e disponibilidade podem mudar. Confirme as condições na loja antes de comprar.</p><a href="#conteudo" className="footer-back-top">Voltar ao conteúdo ↑</a></div>
+  </div></footer>;
+}
 export function ComparisonBar() {
   const { selected, products, toggle, clear, message } = useCatalog();
   const pathname = usePathname();
