@@ -29,8 +29,7 @@ export function mergeImportedProduct(collected: CollectedProduct, existing: Admi
   }
   if (existing && (mode === "price" || mode === "offer")) {
     const previous = existing.offers.find(offer => offer.storeId === storeId);
-    if (mode === "price" && !previous) throw new AdminError("Adicione a oferta desta loja antes de atualizar apenas o preço.");
-    const offer = mode === "price" ? {...previous!, price: collected.price, available:true} : {id: previous?.id ?? `store-${storeId}`, storeId, price: collected.price, url: collected.buyUrl, available: true};
+    const offer = mode === "price" && previous ? {...previous, price: collected.price, available:true, ...(previous.externalId !== collected.externalId ? {url:collected.buyUrl} : {})} : {id: previous?.id ?? `store-${storeId}`, storeId, price: collected.price, url: collected.buyUrl, available: true};
     return {...existing, offers: [...existing.offers.filter(offer => offer.storeId !== storeId), offer]};
   }
   const specs = [...(existing?.specs ?? [])];

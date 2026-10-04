@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Comparacel — Importador de produtos",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "Importa o produto aberto no Mercado Livre ou Amazon para o Comparacel.",
   "permissions": ["activeTab", "scripting", "storage"],
   "optional_host_permissions": ["https://*/*"],

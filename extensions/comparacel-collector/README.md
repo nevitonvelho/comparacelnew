@@ -72,3 +72,7 @@ Nos anúncios já vinculados, use **Marcar oferta como indisponível**. Funciona
 ### Diagnóstico de API anterior (1.1.6)
 
 Se o servidor conectado ainda recusar a ação de indisponibilidade, a mensagem identifica o endereço que precisa receber a atualização. Atualizar apenas a extensão não atualiza a API do site publicado. Os campos permanecem preenchidos após o erro.
+
+### Atualizar preço de produto selecionado (1.1.7)
+
+O botão **Atualizar apenas o preço** também aparece para fichas sugeridas ou selecionadas na busca manual. Quando o anúncio ainda não está vinculado, informe o afiliado desta loja: a ação adiciona/atualiza sua oferta, sem substituir nome, imagem, descrição ou ficha técnica. Confira se a sugestão corresponde ao mesmo modelo e versão. Anúncios já vinculados mantêm o link cadastrado sem exigir preenchê-lo novamente.

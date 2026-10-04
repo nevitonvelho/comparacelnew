@@ -65,13 +65,13 @@ export async function POST(request:NextRequest) {
       existing=adminProductFromData(doc.id,doc.data()!);
     }
     if(mode!=="import" && !existing)throw new AdminError("Selecione um produto cadastrado.");
-    if((mode==="price" || mode==="unavailable") && (!matched || matched.id!==existing?.id || !existing.offers.some(offer=>offerMatchesIdentity(offer,capture.source,identity))))throw new AdminError("Adicione este anúncio à ficha antes de atualizar só o preço.");
+    if(mode==="unavailable" && (!matched || matched.id!==existing?.id || !existing.offers.some(offer=>offerMatchesIdentity(offer,capture.source,identity))))throw new AdminError("Adicione este anúncio à ficha antes de atualizar só o preço.");
     const categorySlug=existing?.category ?? input.category;
     if(typeof categorySlug!=="string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(categorySlug))throw new AdminError("Escolha a categoria.");
     const category=await db.collection("categories").where("slug","==",categorySlug).limit(1).get();
     if(category.empty)throw new AdminError("Categoria não cadastrada.");
     if(input.affiliateUrl!==undefined && (typeof input.affiliateUrl!=="string" || input.affiliateUrl.length>2000))throw new AdminError("Link de afiliado inválido.");
-    const affiliateUrl=(mode==="price" || mode==="unavailable")?capture.pageUrl:(input.affiliateUrl?.trim() || matched?.offers.find(offer=>offerMatchesIdentity(offer,capture.source,identity))?.url);
+    const affiliateUrl=(mode==="unavailable" || (mode==="price" && matched))?capture.pageUrl:(input.affiliateUrl?.trim() || matched?.offers.find(offer=>offerMatchesIdentity(offer,capture.source,identity))?.url);
     if(!affiliateUrl)throw new AdminError("Informe o link de afiliado desta loja.");
     const line=capture.source==="amazon"?affiliateUrl:`${affiliateUrl} ${capture.pageUrl}`;
     const collected=collectedFromProductCapture(capture,line);

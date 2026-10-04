@@ -252,7 +252,7 @@ test('extension price-only updates preserve affiliate, specifications and other 
   assert.deepEqual({...result,offers:existing.offers},existing);
   assert.deepEqual(result.offers.find(offer=>offer.storeId==='amazon'),{...existing.offers[0],price:90,available:true});
   assert.deepEqual(result.offers.find(offer=>offer.storeId==='mercado-livre'),existing.offers[1]);
-  assert.throws(()=>mergeImportedProduct(collected,{...existing,offers:[]},'outro','marca','amazon','','price'));
+  assert.equal(mergeImportedProduct(collected,{...existing,offers:[]},'outro','marca','amazon','','price').offers[0].price,90);
 });
 test('extension attaches the other store without changing the product; full refresh replaces collected fields', () => {
   const existing={id:'produto',revision:2,name:'Manual',description:'Manual',brandId:'marca',category:'celulares',imageUrl:'old',isActive:true,overallScore:8,metaTitle:'SEO',metaDescription:'SEO',specs:[inferImportSpec('Memória','128 GB'),inferImportSpec('Cor','Azul')],offers:[{id:'amazon',storeId:'amazon',price:100,url:'https://amzn.to/owner',available:true}],highlights:[{kind:'pro',text:'Manual'}]};

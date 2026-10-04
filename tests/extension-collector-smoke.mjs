@@ -73,7 +73,7 @@ try {
   assert.match(await popup.locator('#match-status').textContent(),/Possível produto já cadastrado/);
   assert.equal(await popup.locator('#search-controls').evaluate(node=>node.open),false);
   assert.equal(await popup.locator('#search').inputValue(),'Lavadora');
-  assert.equal(await popup.locator('#update-price').isVisible(),false);
+  assert.equal(await popup.locator('#update-price').isVisible(),true);
   assert.equal(await popup.locator('#save-offer').isVisible(),true);
   await popup.locator('#affiliate').fill('https://meli.la/owner');
   await popup.locator('#save-offer').click();

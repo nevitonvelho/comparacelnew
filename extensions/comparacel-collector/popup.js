@@ -120,7 +120,7 @@ function renderActions() {
   document.querySelector("#import").hidden=Boolean(product);
   document.querySelector("#mark-unavailable").hidden=!exact;
   for(const id of ["import","update-price","update-full","save-offer"])document.querySelector(`#${id}`).disabled=captured?.price==null;
-  document.querySelector("#update-price").hidden=!exact;
+  document.querySelector("#update-price").hidden=!product;
   document.querySelector("#update-full").hidden=!product;
   document.querySelector("#save-offer").hidden=!product;
   document.querySelector("#update-help").hidden=!product;
@@ -200,7 +200,7 @@ async function saveProduct(mode) {
   try {
     if(!connected)throw new Error("Conecte a extensão ao Comparacel primeiro.");
     const affiliateUrl=document.querySelector("#affiliate").value.trim();const category=document.querySelector("#category").value;const productId=productSelect.value;
-    if(mode!=="price" && mode!=="unavailable" && !affiliateUrl && !matchedProduct)throw new Error("Informe o link de afiliado desta loja.");
+    if(mode!=="unavailable" && !affiliateUrl && !matchedProduct)throw new Error("Informe o link de afiliado desta loja.");
     if(!productId && !category)throw new Error("Escolha uma categoria.");
     if(!productId)await chrome.storage.local.set({category});
     status.textContent=mode==="unavailable"?"Marcando oferta como indisponível…":mode==="price"?"Atualizando o preço…":mode==="offer"?"Salvando oferta e link de afiliado…":"Salvando produto e imagem…";

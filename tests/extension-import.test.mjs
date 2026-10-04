@@ -208,3 +208,16 @@ test('indisponibilidade sem preço preserva afiliado, último preço e outras lo
   assert.equal(restored.status,200);
   assert.equal(records.lavadora.offers[0].available,true);
 });
+
+test('price action can attach a selected cross-store offer without replacing product fields',async()=>{
+  const {record,records}=routeFixture();
+  const result=await sendExtension({capture,mode:'price',productId:'lavadora',affiliateUrl:'https://meli.la/owner'});
+  assert.equal(result.status,200);
+  assert.equal(records.lavadora.name,record.name);
+  assert.equal(records.lavadora.description,record.description);
+  assert.equal(records.lavadora.imageUrl,record.imageUrl);
+  assert.deepEqual(records.lavadora.specs,record.specs);
+  assert.deepEqual(records.lavadora.offers[0],record.offers[0]);
+  assert.equal(records.lavadora.offers[1].url,'https://meli.la/owner');
+  assert.equal(records.lavadora.offers[1].price,capture.price);
+});
