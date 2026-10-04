@@ -1153,3 +1153,16 @@ footer.site-footer { display:block; max-width:none; margin:48px 0 0; padding:0; 
 .compare-await-first h3 { font-size:20px; margin:0 0 12px; }
 .compare-await-first p { max-width:280px; font-size:13px; line-height:1.8; margin:0; }
 @media(max-width:700px) { .compare-await-first { min-height:220px; } .compare-versus { display:none; } }
+.product-alternatives { margin:45px 0; padding-top:32px; border-top:1px solid var(--line); }
+.product-alternatives .section-heading h2 { font-size:24px; margin:8px 0; }
+.product-alternatives .section-heading p { font-size:13px; }
+.product-alternatives-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.product-alternatives-grid article { border:1px solid var(--line); border-radius:12px; padding:18px; }
+.alternative-product { display:flex; align-items:center; gap:16px; margin-bottom:15px; }
+.alternative-product .product-photo { width:80px; height:85px; min-height:0; flex-shrink:0; }
+.alternative-product .product-photo img { padding:4px; }
+.alternative-product h3 { font-size:13px; line-height:1.5; margin:6px 0; }
+.alternative-product small { color:var(--muted); font-size:10px; }
+.alternative-product strong { font-size:14px; }
+.product-alternatives-grid .button { width:100%; }
+@media(max-width:650px) { .product-alternatives-grid { grid-template-columns:1fr; } }

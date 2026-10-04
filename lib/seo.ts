@@ -16,6 +16,12 @@ export function productDescription(product: Product) {
   if (product.metaDescription) return product.metaDescription;
   return `Confira preços, ofertas e a ficha técnica de ${product.name}. Compare com outros produtos de ${categoryNames[product.category] ?? product.category} no Comparacel.`;
 }
+export function productModifiedAt(product: Product, now = Date.now()): string | undefined {
+  const dates = [product.updatedAt, ...product.offers.map(offer => offer.priceUpdatedAt)]
+    .filter((date): date is string => Boolean(date))
+    .map(date => Date.parse(date)).filter(date => Number.isFinite(date) && date <= now);
+  return dates.length ? new Date(Math.max(...dates)).toISOString() : undefined;
+}
 export function productSchema(product: Product) {
   const offers = product.offers.filter(offer => offer.available && offer.url && offer.price !== null && offer.price > 0);
   return {
