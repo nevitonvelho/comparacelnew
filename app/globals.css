@@ -77,7 +77,7 @@ select { background: white; border: 1px solid #d9dce2; border-radius: 8px; heigh
 .product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
 .product-card { background: white; border: 1px solid var(--line); border-radius: 15px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .2s; }
 .product-card:hover { box-shadow: 0 8px 28px #17202c0c; }
-.product-art { display: block; position: relative; height: 220px; background: #fafafa; border-bottom: 1px solid var(--line); }
+.product-art { display: block; position: relative; height: 220px; background: #fff; border-bottom: 1px solid var(--line); }
 .category-tag { position: absolute; z-index: 1; left: 14px; top: 14px; border: 1px solid #ede4de; background: #fffffff0; color: #a34315; padding: 6px 9px; border-radius: 20px; font-size: 10px; }
 .product-photo { position: relative; height: 100%; width: 100%; min-height: 150px; }
 .product-photo img { padding: 30px; }
@@ -117,7 +117,7 @@ footer p, footer small { font-size: 10px; color: var(--muted); }
 .breadcrumbs { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); padding: 25px 0; }
 .breadcrumbs a:hover { text-decoration: underline; }
 .detail-hero { display: grid; grid-template-columns: 1fr 1.15fr; gap: 40px; margin: 20px 0 40px; align-items: start; }
-.detail-photo { background: #fafafa; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.detail-photo { background: #fff; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 .detail-hero h1 { font-size: 29px; letter-spacing: -1px; line-height: 1.35; }
 .detail-hero .price { margin: 25px 0; }
 .offers { border: 1px solid var(--line); border-radius: 14px; padding: 25px; margin-bottom: 35px; }
