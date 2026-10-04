@@ -11,7 +11,7 @@ import { fetchImportResource } from "@/lib/admin-import-fetch";
 import { inspectAdminImage } from "@/lib/admin-image";
 import { invalidateServerCatalog } from "@/lib/server-catalog";
 import { adminProductFromData } from "@/lib/admin-store";
-import { extensionProductIdentity, offerMatchesIdentity, extensionProductSummary, lookupExtensionProduct, suggestExtensionProducts, searchExtensionProducts } from "@/lib/extension-products";
+import { extensionProductIdentity, offerBelongsToSource, offerMatchesIdentity, extensionProductSummary, lookupExtensionProduct, suggestExtensionProducts, searchExtensionProducts } from "@/lib/extension-products";
 import { revalidatePath } from "next/cache";
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -71,7 +71,8 @@ export async function POST(request:NextRequest) {
     const category=await db.collection("categories").where("slug","==",categorySlug).limit(1).get();
     if(category.empty)throw new AdminError("Categoria não cadastrada.");
     if(input.affiliateUrl!==undefined && (typeof input.affiliateUrl!=="string" || input.affiliateUrl.length>2000))throw new AdminError("Link de afiliado inválido.");
-    const affiliateUrl=(mode==="unavailable" || (mode==="price" && matched))?capture.pageUrl:(input.affiliateUrl?.trim() || matched?.offers.find(offer=>offerMatchesIdentity(offer,capture.source,identity))?.url);
+    const savedPriceOffer=mode==="price" ? existing?.offers.find(offer=>offerBelongsToSource(offer,capture.source)) : undefined;
+    const affiliateUrl=(mode==="unavailable" || (mode==="price" && (matched || savedPriceOffer)))?capture.pageUrl:(input.affiliateUrl?.trim() || matched?.offers.find(offer=>offerMatchesIdentity(offer,capture.source,identity))?.url);
     if(!affiliateUrl)throw new AdminError("Informe o link de afiliado desta loja.");
     const line=capture.source==="amazon"?affiliateUrl:`${affiliateUrl} ${capture.pageUrl}`;
     const collected=collectedFromProductCapture(capture,line);

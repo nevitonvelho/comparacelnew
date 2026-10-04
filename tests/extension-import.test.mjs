@@ -221,3 +221,15 @@ test('price action can attach a selected cross-store offer without replacing pro
   assert.equal(records.lavadora.offers[1].url,'https://meli.la/owner');
   assert.equal(records.lavadora.offers[1].price,capture.price);
 });
+
+test('price update reuses the saved store affiliate even when the selected listing ID differs',async()=>{
+  const {record,records}=routeFixture();
+  record.offers.push({id:'ml',storeId:'mercado-livre',externalId:'MLB11111111',url:'https://meli.la/owner',price:90,available:true});
+  const amazon={...record.offers[0]};
+  const result=await sendExtension({capture,mode:'price',productId:'lavadora',affiliateUrl:''});
+  assert.equal(result.status,200);
+  assert.equal(records.lavadora.offers.find(offer=>offer.storeId==='mercado-livre').url,'https://meli.la/owner');
+  assert.equal(records.lavadora.offers.find(offer=>offer.storeId==='mercado-livre').price,capture.price);
+  assert.deepEqual(records.lavadora.offers.find(offer=>offer.storeId==='amazon'),amazon);
+  assert.equal(records.lavadora.name,'Manual');
+});

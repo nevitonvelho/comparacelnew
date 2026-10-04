@@ -114,6 +114,14 @@ function renderProducts(selected=matchedProduct?.id || "") {
   productSelect.value=selected;
   renderActions();
 }
+function savedAffiliateForSource(product) {
+  return product?.offers?.find(offer=>{
+    try {
+      const host=new URL(offer.url).hostname.toLowerCase();
+      return captured?.source==="amazon" ? host==="amzn.to" || host==="amazon.com.br" || host.endsWith(".amazon.com.br") : host==="meli.la" || host==="mercadolivre.com.br" || host.endsWith(".mercadolivre.com.br") || host==="mercadolivre.com" || host.endsWith(".mercadolivre.com");
+    } catch {return false;}
+  });
+}
 function renderActions() {
   const product=products.get(productSelect.value);
   const exact=product && product.id===matchedProduct?.id;
@@ -127,8 +135,9 @@ function renderActions() {
   document.querySelector("#category").disabled=Boolean(product);
   document.querySelector("#search-controls").hidden=Boolean(matchedProduct);
   const affiliate=document.querySelector("#affiliate");
-  affiliate.placeholder=exact?"Deixe vazio para manter o afiliado cadastrado":"https://meli.la/… ou https://amzn.to/…";
+  affiliate.placeholder=(exact || savedAffiliateForSource(product))?"Deixe vazio para manter o afiliado cadastrado":"https://meli.la/… ou https://amzn.to/…";
   const edit=document.querySelector("#edit");edit.hidden=!product;
+  if(product)document.querySelector("#category").value=product.category;
   if(product)edit.href=new URL(product.editPath,siteOrigin()).href;
 }
 productSelect.addEventListener("change",renderActions);
@@ -158,7 +167,7 @@ async function identifyProduct() {
   renderProducts(matchedProduct?.id || suggested?.id || "");
   if(!document.querySelector("#search").value)document.querySelector("#search").value=snapshot.name;
   document.querySelector("#search-controls").open=false;
-  document.querySelector("#match-status").textContent=matchedProduct?`Já cadastrado: ${matchedProduct.name}. Escolha o que deseja atualizar.`:suggested?`Possível produto já cadastrado: ${suggested.name}. Confira modelo, capacidade e versão; cole o afiliado desta loja para adicionar a oferta.`:"Nenhum produto equivalente encontrado automaticamente. Você pode importar um novo produto ou abrir a busca abaixo.";
+  document.querySelector("#match-status").textContent=matchedProduct?`Já cadastrado: ${matchedProduct.name}. Escolha o que deseja atualizar.`:suggested?`Possível produto já cadastrado: ${suggested.name}. Confira modelo, capacidade e versão. Atualizar apenas o preço mantém o afiliado salvo nesta loja; para adicionar uma nova loja, informe o afiliado.`:"Nenhum produto equivalente encontrado automaticamente. Você pode importar um novo produto ou abrir a busca abaixo.";
   persistDraft();
 }
 async function searchProducts() {
@@ -200,7 +209,7 @@ async function saveProduct(mode) {
   try {
     if(!connected)throw new Error("Conecte a extensão ao Comparacel primeiro.");
     const affiliateUrl=document.querySelector("#affiliate").value.trim();const category=document.querySelector("#category").value;const productId=productSelect.value;
-    if(mode!=="unavailable" && !affiliateUrl && !matchedProduct)throw new Error("Informe o link de afiliado desta loja.");
+    if(mode!=="unavailable" && !affiliateUrl && !matchedProduct && !(mode==="price" && savedAffiliateForSource(products.get(productId))))throw new Error("Informe o link de afiliado desta loja.");
     if(!productId && !category)throw new Error("Escolha uma categoria.");
     if(!productId)await chrome.storage.local.set({category});
     status.textContent=mode==="unavailable"?"Marcando oferta como indisponível…":mode==="price"?"Atualizando o preço…":mode==="offer"?"Salvando oferta e link de afiliado…":"Salvando produto e imagem…";

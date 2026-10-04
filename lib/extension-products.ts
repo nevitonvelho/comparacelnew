@@ -12,6 +12,12 @@ export function offerMatchesIdentity(offer: AdminProduct["offers"][number], sour
   if (offer.externalId === externalId) return true;
   try { return extensionProductIdentity(offer.url, source) === externalId; } catch { return false; }
 }
+export function offerBelongsToSource(offer: AdminProduct["offers"][number], source: ImportSource) {
+  try {
+    const host=new URL(offer.url).hostname.toLowerCase();
+    return source === "amazon" ? host === "amzn.to" || host === "amazon.com.br" || host.endsWith(".amazon.com.br") : host === "meli.la" || host === "mercadolivre.com.br" || host.endsWith(".mercadolivre.com.br") || host === "mercadolivre.com" || host.endsWith(".mercadolivre.com");
+  } catch { return false; }
+}
 export async function lookupExtensionProduct(db: Firestore, source: ImportSource, externalId: string) {
   const mapping = await db.doc(`adminImportSources/${source}-${externalId}`).get();
   if (mapping.exists) {

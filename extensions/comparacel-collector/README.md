@@ -73,6 +73,6 @@ Nos anúncios já vinculados, use **Marcar oferta como indisponível**. Funciona
 
 Se o servidor conectado ainda recusar a ação de indisponibilidade, a mensagem identifica o endereço que precisa receber a atualização. Atualizar apenas a extensão não atualiza a API do site publicado. Os campos permanecem preenchidos após o erro.
 
-### Atualizar preço de produto selecionado (1.1.7)
+### Atualizar preço de produto selecionado (1.1.8)
 
-O botão **Atualizar apenas o preço** também aparece para fichas sugeridas ou selecionadas na busca manual. Quando o anúncio ainda não está vinculado, informe o afiliado desta loja: a ação adiciona/atualiza sua oferta, sem substituir nome, imagem, descrição ou ficha técnica. Confira se a sugestão corresponde ao mesmo modelo e versão. Anúncios já vinculados mantêm o link cadastrado sem exigir preenchê-lo novamente.
+O botão **Atualizar apenas o preço** também aparece para fichas sugeridas ou selecionadas na busca manual. Se a ficha ainda não possui oferta desta loja, informe o afiliado: a ação adiciona/atualiza sua oferta, sem substituir nome, imagem, descrição ou ficha técnica. Confira se a sugestão corresponde ao mesmo modelo e versão. Se já existe oferta desta loja, a atualização de preço mantém seu afiliado salvo, mesmo quando o identificador do anúncio aberto mudou. Não é necessário preencher o link novamente.
