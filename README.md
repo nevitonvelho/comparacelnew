@@ -260,3 +260,7 @@ Os avisos ficam no localStorage por usuário e navegador. Marcar como lido remov
 ### Atualizar preços
 
 Use **Atualizar apenas o preço** na extensão, com a página do produto aberta. O link de afiliado, a ficha e as outras ofertas são preservados. O preço coletado é salvo com histórico e auditoria.
+
+### Compatibilidade de autenticação na Vercel
+
+O override `jwks-rsa > jose = 5.10.0` mantém o carregamento CommonJS usado pelo Firebase Admin compatível com runtimes sem `require(ESM)`. Sem esse ajuste, o carregamento de `firebase-admin/auth` pode falhar com `ERR_REQUIRE_ESM`, antes de atender páginas ou APIs. Referência: https://github.com/firebase/firebase-admin-node/issues/3181. O teste `tests/firebase-runtime.test.mjs` carrega Auth/App Check com `--no-experimental-require-module` e verifica a conversão de uma chave RSA de JWKS para PEM.
