@@ -65,7 +65,7 @@ export async function POST(request:NextRequest) {
       existing=adminProductFromData(doc.id,doc.data()!);
     }
     if(mode!=="import" && !existing)throw new AdminError("Selecione um produto cadastrado.");
-    if(mode==="unavailable" && (!matched || matched.id!==existing?.id || !existing.offers.some(offer=>offerMatchesIdentity(offer,capture.source,identity))))throw new AdminError("Adicione este anúncio à ficha antes de atualizar só o preço.");
+    if(mode==="unavailable" && !existing?.offers.some(offer=>offerBelongsToSource(offer,capture.source)))throw new AdminError("A ficha selecionada ainda não possui uma oferta desta loja.");
     const categorySlug=existing?.category ?? input.category;
     if(typeof categorySlug!=="string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(categorySlug))throw new AdminError("Escolha a categoria.");
     const category=await db.collection("categories").where("slug","==",categorySlug).limit(1).get();

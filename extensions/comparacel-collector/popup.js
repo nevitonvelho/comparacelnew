@@ -126,7 +126,7 @@ function renderActions() {
   const product=products.get(productSelect.value);
   const exact=product && product.id===matchedProduct?.id;
   document.querySelector("#import").hidden=Boolean(product);
-  document.querySelector("#mark-unavailable").hidden=!exact;
+  document.querySelector("#mark-unavailable").hidden=!(product && (exact || savedAffiliateForSource(product)));
   for(const id of ["import","update-price","update-full","save-offer"])document.querySelector(`#${id}`).disabled=captured?.price==null;
   document.querySelector("#update-price").hidden=!product;
   document.querySelector("#update-full").hidden=!product;
@@ -136,6 +136,7 @@ function renderActions() {
   document.querySelector("#search-controls").hidden=Boolean(matchedProduct);
   const affiliate=document.querySelector("#affiliate");
   affiliate.placeholder=(exact || savedAffiliateForSource(product))?"Deixe vazio para manter o afiliado cadastrado":"https://meli.la/… ou https://amzn.to/…";
+  if(captured?.price==null && product && status.textContent==="Cole o link de afiliado, escolha a categoria e importe.")status.textContent="Preço não disponível. Confira se a ficha selecionada corresponde ao anúncio e use Marcar oferta como indisponível.";
   const edit=document.querySelector("#edit");edit.hidden=!product;
   if(product)document.querySelector("#category").value=product.category;
   if(product)edit.href=new URL(product.editPath,siteOrigin()).href;

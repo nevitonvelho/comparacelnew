@@ -76,3 +76,7 @@ Se o servidor conectado ainda recusar a ação de indisponibilidade, a mensagem 
 ### Atualizar preço de produto selecionado (1.1.8)
 
 O botão **Atualizar apenas o preço** também aparece para fichas sugeridas ou selecionadas na busca manual. Se a ficha ainda não possui oferta desta loja, informe o afiliado: a ação adiciona/atualiza sua oferta, sem substituir nome, imagem, descrição ou ficha técnica. Confira se a sugestão corresponde ao mesmo modelo e versão. Se já existe oferta desta loja, a atualização de preço mantém seu afiliado salvo, mesmo quando o identificador do anúncio aberto mudou. Não é necessário preencher o link novamente.
+
+### Oferta indisponível em ficha selecionada (1.1.9)
+
+O botão de indisponibilidade também aparece para fichas sugeridas ou selecionadas na busca quando já possuem uma oferta da loja aberta. Confira modelo e versão antes de marcar. A ação preserva o link, o último preço e as ofertas das outras lojas; não exige preço na página.

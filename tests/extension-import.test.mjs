@@ -233,3 +233,16 @@ test('price update reuses the saved store affiliate even when the selected listi
   assert.deepEqual(records.lavadora.offers.find(offer=>offer.storeId==='amazon'),amazon);
   assert.equal(records.lavadora.name,'Manual');
 });
+
+test('unavailable action accepts a selected same-store offer with a different listing ID and preserves other stores',async()=>{
+  const {record,records}=routeFixture();
+  record.offers.push({id:'ml',storeId:'mercado-livre',externalId:'MLB11111111',url:'https://meli.la/owner',price:90,available:true});
+  const amazon={...record.offers[0]};
+  const result=await sendExtension({capture:{...capture,price:null},mode:'unavailable',productId:'lavadora'});
+  assert.equal(result.status,200);
+  const offer=records.lavadora.offers.find(offer=>offer.storeId==='mercado-livre');
+  assert.equal(offer.available,false);assert.equal(offer.price,90);assert.equal(offer.url,'https://meli.la/owner');
+  assert.deepEqual(records.lavadora.offers.find(offer=>offer.storeId==='amazon'),amazon);
+  routeFixture();
+  assert.equal((await sendExtension({capture:{...capture,price:null},mode:'unavailable',productId:'lavadora'})).status,400);
+});
