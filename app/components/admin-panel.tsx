@@ -94,7 +94,7 @@ export function AdminPanel() {
   }).sort((a,b)=>{
     if(productSort==="name")return a.name.localeCompare(b.name,"pt-BR");
     const left=priceHealth.get(a.id)!,right=priceHealth.get(b.id)!;
-    const rank={never:0,due:1,attention:2,fresh:3,"no-offers":4};
+    const rank={never:0,due:1,attention:2,fresh:3,unavailable:4,"no-offers":5};
     return rank[left.state]-rank[right.state] || (left.oldest ?? 0)-(right.oldest ?? 0) || a.name.localeCompare(b.name,"pt-BR");
   });
   const tabs = [{ id: "dashboard", name: "Visão geral", icon: "dashboard" }, { id: "products", name: "Produtos", icon: "product" }, { id: "import", name: "Extensão", icon: "add" }, { id: "categories", name: "Categorias", icon: "product" }, { id: "references", name: "Marcas e lojas", icon: "store" }, { id: "audit", name: "Atividade", icon: "chart" }, { id: "users", name: "Usuários e acessos", icon: "user" }] as const;

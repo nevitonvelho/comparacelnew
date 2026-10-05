@@ -158,3 +158,12 @@ test('product deletion checks revision and atomically removes product and collec
   db.runTransaction=async run=>run({get:async()=>({exists:false})});
   await assert.rejects(()=>deleteAdminProduct(db,account,'teste',2),error=>error.status===404);
 });
+
+test('marking a source unavailable records its check date even without a price',async()=>{
+ let data={adminRevision:0,name:'Teste',offers:[{id:'a',storeId:'amazon',url:'https://amzn.to/owner',priceCents:null,is_available:true}]};
+ const histories=[];
+ const db={collection:kind=>({doc:id=>({kind,id}),where:()=>({limit:()=>({query:true})})}),runTransaction:async run=>run({get:async ref=>ref.query?{empty:false,docs:[{id:'category',data:()=>({})}]}:{exists:ref.kind==='products',data:()=>data},getAll:async(...refs)=>refs.map(ref=>({exists:true,id:ref.id,data:()=>({name:ref.id})})),set:(ref,patch)=>{if(ref.kind==='products')data={...data,...patch};},create:(ref,value)=>{if(ref.kind==='priceHistory')histories.push(value);}})};
+ await saveAdminProduct(db,account,{...product,offers:[{id:'a',storeId:'amazon',url:'https://amzn.to/owner',price:null,available:false}]},false,10000,{key:'amazon-B012345678',externalId:'B012345678',storeId:'amazon'});
+ assert.equal(data.offers[0].priceCheckedAt.toMillis(),10000);
+ assert.equal(data.offers[0].is_available,false);assert.equal(data.offers[0].priceCents,null);assert.equal(histories.length,0);
+});

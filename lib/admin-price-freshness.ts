@@ -1,17 +1,17 @@
 import type { AdminOffer, AdminProduct } from "./admin-model";
-export type PriceFreshness = "fresh" | "attention" | "due" | "never" | "no-offers";
+export type PriceFreshness = "fresh" | "attention" | "due" | "never" | "no-offers" | "unavailable";
 export function offerPriceFreshness(offer:AdminOffer,days=7,now=Date.now()) {
   const date=offer.priceUpdatedAt?Date.parse(offer.priceUpdatedAt):NaN;
-  if(!Number.isFinite(date) || date>now+60000)return {state:"never" as PriceFreshness,ageDays:null,checkedAt:null};
+  if(!Number.isFinite(date) || date>now+60000)return {state:(offer.available?"never":"unavailable") as PriceFreshness,ageDays:null,checkedAt:null};
   const ageDays=Math.max(0,Math.floor((now-date)/86400000));
-  const state:PriceFreshness=offer.price===null || ageDays>=days?"due":ageDays>=Math.max(1,Math.ceil(days/2))?"attention":"fresh";
+  const state:PriceFreshness=(offer.available && offer.price===null) || ageDays>=days?"due":ageDays>=Math.max(1,Math.ceil(days/2))?"attention":"fresh";
   return {state,ageDays,checkedAt:date};
 }
 export function productPriceFreshness(product:AdminProduct,days=7,now=Date.now()) {
   const offers=product.offers.filter(offer=>offer.url);
   if(!offers.length)return {state:"no-offers" as PriceFreshness,oldest:null,offers:[]};
   const entries=offers.map(offer=>({offer,...offerPriceFreshness(offer,days,now)}));
-  const priority={never:0,due:1,attention:2,fresh:3,"no-offers":4};
+  const priority={never:0,due:1,attention:2,fresh:3,unavailable:4,"no-offers":5};
   entries.sort((a,b)=>priority[a.state]-priority[b.state] || (a.checkedAt ?? 0)-(b.checkedAt ?? 0));
   return {state:entries[0].state,oldest:entries[0].checkedAt,offers:entries};
 }

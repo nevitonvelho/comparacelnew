@@ -31,3 +31,11 @@ test('extension shortcuts open source pages for Amazon, Mercado catalog and adve
   assert.equal(offerProductPage(offer,'Amazon'),offer.url);
   assert.equal(offerProductPage({...offer,url:'javascript:alert(1)'},'Outra'),'');
 });
+
+test('unavailable offers are checked without needing a price and keep their review interval',()=>{
+ const unavailable={...offer,price:null,available:false};
+ assert.equal(offerPriceFreshness(unavailable,7,now).state,'fresh');
+ assert.equal(offerPriceFreshness({...unavailable,priceUpdatedAt:undefined},7,now).state,'unavailable');
+ assert.equal(offerPriceFreshness({...unavailable,priceUpdatedAt:new Date(now-8*86400000).toISOString()},7,now).state,'due');
+ assert.equal(productPriceFreshness({offers:[unavailable,{...offer,storeId:'other',priceUpdatedAt:undefined}]},7,now).state,'never');
+});
