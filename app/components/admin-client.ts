@@ -1,6 +1,6 @@
 import type { User } from "firebase/auth";
 import { AdminError, type AdminProduct, type AdminReference } from "@/lib/admin-model";
-export type AdminCatalog = { products: AdminProduct[]; brands: AdminReference[]; stores: AdminReference[]; homeLimit: number; categories: { id: string; name: string; showOnHome: boolean; order: number }[] };
+export type AdminCatalog = { products: AdminProduct[]; brands: AdminReference[]; stores: AdminReference[]; homeLimit: number; categories: { id: string; name: string; showOnHome: boolean; order: number; representativeProductId?: string }[] };
 export type AdminDashboard = { users: number | null; total: number; active: number; noImage: number; noPrice: number; productViews: number; comparisonViews: number; reactions: number; offers: number; audit: { id: string; action: string; name: string; productId: string; email: string; at: string }[] };
 export async function adminRequest<T>(user: User, path: string, init: RequestInit = {}): Promise<T> {
   async function send(refresh: boolean) {

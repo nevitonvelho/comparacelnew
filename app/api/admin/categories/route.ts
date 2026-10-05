@@ -23,13 +23,19 @@ export async function POST(request: NextRequest) {
       });
     } else {
       if (!Number.isInteger(input.homeLimit) || Number(input.homeLimit)<0 || Number(input.homeLimit)>100 || !Array.isArray(input.categories) || input.categories.length>100) throw new AdminError("Defina uma quantidade entre 0 e 100 categorias.");
-      const entries = input.categories as {id:string;showOnHome:boolean;order:number}[];
-      if (entries.some(item=> !item || typeof item.id!=="string" || typeof item.showOnHome!=="boolean" || !Number.isInteger(item.order) || item.order<0 || item.order>999) || new Set(entries.map(item=>item.id)).size!==entries.length) throw new AdminError("Confira a ordem e a visibilidade das categorias.");
+      const entries = input.categories as {id:string;showOnHome:boolean;order:number;representativeProductId?:string}[];
+      if (entries.some(item=> !item || typeof item.id!=="string" || typeof item.showOnHome!=="boolean" || !Number.isInteger(item.order) || item.order<0 || item.order>999 || (item.representativeProductId!==undefined && (typeof item.representativeProductId!=="string" || item.representativeProductId.length>400 || (item.representativeProductId!=="" && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.representativeProductId))))) || new Set(entries.map(item=>item.id)).size!==entries.length) throw new AdminError("Confira a ordem e a visibilidade das categorias.");
       await db.runTransaction(async tx=>{
         const snapshot=await tx.get(db.collection("categories"));
         const refs=new Map(snapshot.docs.map(doc=>[String(doc.data().slug ?? doc.id),doc.ref]));
         if(entries.some(item=>!refs.has(item.id))) throw new AdminError("Categoria não encontrada. Atualize o painel.");
-        for(const item of entries) tx.update(refs.get(item.id)!,{showOnHome:item.showOnHome,homeOrder:item.order});
+        const chosen=entries.filter(item=>item.representativeProductId);
+        const products=chosen.length?await tx.getAll(...chosen.map(item=>db.collection("products").doc(item.representativeProductId!))):[];
+        for(let index=0;index<chosen.length;index++) {
+          const product=products[index];const data=product.data();
+          if(!product.exists || data?.categorySlug!==chosen[index].id || data?.isActive!==true || !data?.imageUrl)throw new AdminError("Escolha um produto ativo com imagem da mesma categoria. Atualize o painel se ele foi alterado.");
+        }
+        for(const item of entries) tx.update(refs.get(item.id)!,{showOnHome:item.showOnHome,homeOrder:item.order,...(item.representativeProductId!==undefined?{representativeProductId:item.representativeProductId}:{})});
         tx.set(db.doc("siteSettings/categories"),{homeLimit:input.homeLimit});
         tx.create(db.collection("adminAudit").doc(),{action:"categories-home-updated",name:"Categorias da home",actorUid:actor.uid,actorEmail:actor.email ?? "",createdAt:new Date()});
       });

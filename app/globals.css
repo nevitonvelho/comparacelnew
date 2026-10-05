@@ -1169,3 +1169,13 @@ footer.site-footer { display:block; max-width:none; margin:48px 0 0; padding:0; 
 
 .admin-product-actions .admin-delete-product { color:#b42318; background:#fff4f2; }
 .admin-product-actions .admin-delete-product:hover:not(:disabled) { background:#fee4df; }
+
+.admin-category-setting > .admin-checkbox { flex:0 0 180px; }
+.admin-category-representative { display:flex; align-items:center; gap:12px; flex:1; min-width:0; }
+.admin-category-representative > label { flex:1; min-width:0; }
+.admin-category-representative select { width:100%; }
+.admin-category-image { position:relative; flex:0 0 56px; height:56px; background:white; }
+@media(max-width:800px) { .admin-category-setting { flex-wrap:wrap; } .admin-category-representative { flex-basis:100%; order:3; } }
+
+.admin-category-image .product-photo { min-height:0; }
+.admin-category-image .product-photo img { padding:4px; }
