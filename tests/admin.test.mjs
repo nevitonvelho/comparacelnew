@@ -122,7 +122,7 @@ test('replacement source identifiers survive validation and reject invalid ident
  assert.throws(()=>validateAdminProduct({...product,offers:[{...offer,externalId:'../bad'}]}));
 });
 const storeSource=compile(await readFile('lib/admin-store.ts','utf8')).replace('"firebase-admin/firestore"',JSON.stringify(import.meta.resolve('firebase-admin/firestore'))).replace('"./admin-model"',JSON.stringify(modelUrl)).replace('"./category-settings"',JSON.stringify(url('export function readCategorySettings(){return {};}')));
-const {saveAdminProduct}=await import(url(storeSource));
+const {saveAdminProduct,deleteAdminProduct}=await import(url(storeSource));
 test('saving replacement keeps product identity and other offers, updates source and price history',async()=>{
  let data={adminRevision:0,name:'Old',offers:[{id:'a',storeId:'amazon',url:'https://www.amazon.com.br/dp/B000000001',external_id:'B000000001',priceCents:1000,is_available:true},{id:'b',storeId:'other',url:'https://shop.example/product',priceCents:1200,is_available:true}]};
  const histories=[];
@@ -140,4 +140,21 @@ test('first successful unchanged price check creates one baseline without fake e
  assert.equal(baseline.priceCents,10000);assert.equal(baseline.source,'admin-baseline');assert.ok(Date.parse(baseline.recorded_at));
  const first=baseline;
  await saveRefreshedPrice(db,{uid:'owner'},'p','a','url',100,10000);assert.equal(baseline,first);
+});
+
+test('product deletion checks revision and atomically removes product and collector links with audit',async()=>{
+  const removed=[],audits=[];
+  const productRef={kind:'products',id:'teste'};
+  const db={collection:kind=>({doc:id=>kind==='products'?productRef:{kind,id},where:()=>({query:true})}),runTransaction:async run=>run({
+    get:async ref=>ref.query?{size:2,docs:[{ref:{id:'amazon-old'}},{ref:{id:'ml-old'}}]}:{exists:true,data:()=>({name:'Teste',adminRevision:2})},
+    delete:ref=>removed.push(ref.id),create:(_ref,entry)=>audits.push(entry)
+  })};
+  await assert.rejects(()=>deleteAdminProduct(db,account,'teste',1),error=>error.status===409);
+  await assert.rejects(()=>deleteAdminProduct(db,account,'../teste',2));
+  assert.deepEqual(removed,[]);
+  assert.deepEqual(await deleteAdminProduct(db,account,'teste',2),{id:'teste',name:'Teste'});
+  assert.deepEqual(removed,['amazon-old','ml-old','teste']);
+  assert.equal(audits[0].action,'product.delete');assert.equal(audits[0].actorUid,account.uid);
+  db.runTransaction=async run=>run({get:async()=>({exists:false})});
+  await assert.rejects(()=>deleteAdminProduct(db,account,'teste',2),error=>error.status===404);
 });

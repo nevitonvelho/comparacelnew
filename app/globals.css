@@ -1166,3 +1166,6 @@ footer.site-footer { display:block; max-width:none; margin:48px 0 0; padding:0; 
 .alternative-product strong { font-size:14px; }
 .product-alternatives-grid .button { width:100%; }
 @media(max-width:650px) { .product-alternatives-grid { grid-template-columns:1fr; } }
+
+.admin-product-actions .admin-delete-product { color:#b42318; background:#fff4f2; }
+.admin-product-actions .admin-delete-product:hover:not(:disabled) { background:#fee4df; }

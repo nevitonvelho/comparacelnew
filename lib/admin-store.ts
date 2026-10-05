@@ -80,3 +80,21 @@ export async function readAdminDashboard(db: Firestore) {
   const sum = (prefix: string) => stats.docs.filter(doc => doc.id.startsWith(prefix)).reduce((total, doc) => total + (Number(doc.data().views) || 0), 0);
   return { total: items.length, active: items.filter(item => item.data.isActive === true).length, noImage: items.filter(item => !item.data.imageUrl).length, noPrice: items.filter(item => item.data.bestPriceCents == null).length, productViews: sum("product:"), comparisonViews: sum("comparison:"), reactions: reactions.docs.reduce((total, doc) => total + (Number(doc.data().total) || 0), 0), offers: items.reduce((total, item) => total + (Array.isArray(item.data.offers) ? item.data.offers.filter((offer: Record<string, unknown>) => offer.is_available === true).length : 0), 0), audit: audit.docs.map(doc => ({ id: doc.id, action: string(doc.data().action), name: string(doc.data().name), productId: string(doc.data().productId), email: string(doc.data().actorEmail), at: doc.data().createdAt?.toDate().toISOString() ?? "" })) };
 }
+
+export async function deleteAdminProduct(db: Firestore, actor: {uid:string;email?:string}, id: string, revision: unknown, now=Date.now()) {
+  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || id.length>400 || !Number.isInteger(revision) || Number(revision)<0)throw new AdminError("Produto inválido.");
+  const ref=db.collection("products").doc(id);
+  const audit=db.collection("adminAudit").doc();
+  return db.runTransaction(async tx=>{
+    const existing=await tx.get(ref);
+    if(!existing.exists)throw new AdminError("Produto não encontrado.",404);
+    const old=existing.data()!;
+    if(revision!==(Number(old.adminRevision)||0))throw new AdminError("O produto foi alterado em outra aba. Atualize a lista antes de excluir.",409);
+    const sources=await tx.get(db.collection("adminImportSources").where("productId","==",id));
+    if(sources.size>450)throw new AdminError("Este produto possui muitos vínculos de importação. Não foi excluído.");
+    for(const source of sources.docs)tx.delete(source.ref);
+    tx.delete(ref);
+    tx.create(audit,{action:"product.delete",productId:id,name:string(old.name),actorUid:actor.uid,actorEmail:actor.email ?? "",createdAt:Timestamp.fromMillis(now)});
+    return {id,name:string(old.name)};
+  });
+}
