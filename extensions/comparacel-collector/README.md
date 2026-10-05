@@ -80,3 +80,7 @@ O botão **Atualizar apenas o preço** também aparece para fichas sugeridas ou 
 ### Oferta indisponível em ficha selecionada (1.1.9)
 
 O botão de indisponibilidade também aparece para fichas sugeridas ou selecionadas na busca quando já possuem uma oferta da loja aberta. Confira modelo e versão antes de marcar. A ação preserva o link, o último preço e as ofertas das outras lojas; não exige preço na página.
+
+### Conferência por variante (1.1.10)
+
+As sugestões diferenciam cores quando ambas as fichas informam a cor. A mensagem de sucesso identifica o nome completo da ficha atualizada. Conferir uma variante não marca outra variante como conferida.

@@ -77,7 +77,7 @@ try {
   assert.equal(await popup.locator('#save-offer').isVisible(),true);
   await popup.locator('#affiliate').fill('https://meli.la/owner');
   await popup.locator('#save-offer').click();
-  await popup.waitForFunction(()=>document.querySelector('#status').textContent.trim()==='Salvo.');
+  await popup.waitForFunction(()=>document.querySelector('#status').textContent.includes(': Salvo.'));
   assert.equal(await popup.locator('#update-price').isVisible(),true);
   const offerRequest=await popup.evaluate(()=>globalThis.popupFixture.requests[0]);
   assert.equal(offerRequest.productId,'lavadora-importada');assert.equal(offerRequest.mode,'offer');assert.equal(offerRequest.affiliateUrl,'https://meli.la/owner');

@@ -217,7 +217,7 @@ async function saveProduct(mode) {
     const result=await api("POST",{capture:captured,affiliateUrl,category,mode,...(productId?{productId}:{})});
     matchedProduct=result.product;products.clear();products.set(result.product.id,result.product);renderProducts();
     document.querySelector("#match-status").textContent=`Já cadastrado: ${result.product.name}.`;
-    status.textContent=`${result.message} ${(result.warnings || []).join(" ")}`;
+    status.textContent=`${result.product.name}: ${result.message} ${(result.warnings || []).join(" ")}`;
   }catch(error){status.textContent=error.message;}
   finally{controls.forEach((control,index)=>control.disabled=disabled[index]);saving=false;renderActions();persistDraft();}
 }

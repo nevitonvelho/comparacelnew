@@ -246,3 +246,10 @@ test('unavailable action accepts a selected same-store offer with a different li
   routeFixture();
   assert.equal((await sendExtension({capture:{...capture,price:null},mode:'unavailable',productId:'lavadora'})).status,400);
 });
+
+test('product suggestions distinguish colors of the same model and handle legacy graphite spelling',()=>{
+  const name='Smartphone Motorola Moto g35 5G 128GB 4GB RAM ';
+  assert.equal(extensionProductSimilarity(name+'Grafite',name+'Verde'),0);
+  assert.ok(extensionProductSimilarity(name+'Grafite',name+'Garfite')>0);
+  assert.ok(extensionProductSimilarity(name,name+'Verde')>0);
+});

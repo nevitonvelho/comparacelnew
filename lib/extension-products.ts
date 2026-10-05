@@ -67,6 +67,9 @@ export function extensionProductSimilarity(pageName: string, productName: string
     const pageValues=page.filter(word=>attribute.test(word));const productValues=product.filter(word=>attribute.test(word));
     if(pageValues.length && productValues.length && !pageValues.some(value=>productValues.includes(value)))return 0;
   }
+  const colors=(words:string[])=>words.map(word=>word==="garfite"?"grafite":word).filter(word=>["preto","branco","verde","azul","rosa","grafite","chumbo","vermelho","roxo","laranja","prata","dourado"].includes(word));
+  const pageColors=colors(page),productColors=colors(product);
+  if(pageColors.length && productColors.length && !pageColors.some(color=>productColors.includes(color)))return 0;
   const sharedModel=pageModels.some(model=>productModels.includes(model));
   if(sharedModel && shared.length>=3)return 0.9+0.1*shared.length/Math.max(page.length,product.length);
   if(shared.length<Math.min(3,page.length,product.length))return 0;
