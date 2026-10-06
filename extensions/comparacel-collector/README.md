@@ -27,9 +27,9 @@ A extensão envia título, descrição, marca, preço, condição de pagamento q
 
 A chave é salva somente no armazenamento local da extensão. O servidor guarda seu hash, com validade de 30 dias, e verifica as permissões atuais da conta a cada operação. Gerar uma nova chave invalida a anterior; **Revogar conexão** a desativa imediatamente. A chave só permite carregar categorias, consultar produtos e importar/atualizar pela rota da extensão, não autentica as outras rotas do painel.
 
-O painel não precisa ficar aberto depois da conexão. O servidor Comparacel precisa estar acessível. A extensão não navega automaticamente nem resolve verificações das lojas: utiliza a página que você abriu e vê no seu navegador. Se os seletores de preço mudarem, a coleta informa erro em vez de enviar zero.
+O painel não precisa ficar aberto depois da conexão. O servidor Comparacel precisa estar acessível. Na coleta individual, a extensão utiliza a página que você abriu. No lote, abre uma aba por anúncio após você iniciar. Não resolve verificações das lojas. Se os seletores de preço mudarem, a coleta informa erro em vez de enviar zero.
 
-Uma coleta vale por 24 horas e passa por validação no servidor. Não há publicação automática, execução periódica ou coleta em segundo plano.
+Uma coleta vale por 24 horas e passa por validação no servidor. Não há publicação automática nem execução periódica. A atualização em lote depende da tela da extensão aberta e do início manual.
 
 ## Ficha técnica e destaques
 
@@ -84,3 +84,14 @@ O botão de indisponibilidade também aparece para fichas sugeridas ou seleciona
 ### Conferência por variante (1.1.10)
 
 As sugestões diferenciam cores quando ambas as fichas informam a cor. A mensagem de sucesso identifica o nome completo da ficha atualizada. Conferir uma variante não marca outra variante como conferida.
+
+
+## Atualizar preços em lote (1.2.0)
+
+1. Conecte a extensão e clique em **Atualizar preços em lote**. Uma tela própria fica aberta mesmo depois de fechar o popup.
+2. Escolha o intervalo (padrão: sete dias) e clique em **Carregar ofertas desatualizadas**. Ofertas sem data também entram; links sem identificador de anúncio ficam para conferência manual. Inclui rascunhos e ofertas indisponíveis para permitir reativação quando houver preço válido.
+3. Clique em **Iniciar atualização** e permita o acesso à Amazon e ao Mercado Livre quando o navegador pedir. O lote abre uma aba de coleta por vez, salva apenas o preço/condição, preserva o afiliado e avança com intervalo entre anúncios.
+4. Use **Pausar** e **Continuar atualização** quando necessário. Se aparecer uma verificação da loja, o lote pausa e abre a aba correspondente; resolva nela antes de continuar. Pode também deixar esse anúncio para revisão e continuar a fila.
+5. Confira o progresso e as pendências. Falhas não apagam o preço anterior nem marcam ofertas automaticamente como indisponíveis. Uma coleta válida reativa a oferta.
+
+O servidor confirma o produto, a loja, o identificador do anúncio e o link cadastrado antes de salvar. Um redirecionamento para outro anúncio ou uma oferta alterada após carregar a fila exige revisão. O lote mantém o limite existente de 200 operações por hora; ao atingir o limite, pausa. Fechar a tela ou o navegador interrompe a execução; reabrir recupera o último progresso salvo, sem iniciar sozinho. Apenas um lote executa por vez. A chave de conexão precisa continuar válida e o servidor e a extensão precisam estar atualizados.

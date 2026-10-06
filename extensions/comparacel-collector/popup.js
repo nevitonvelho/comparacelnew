@@ -250,3 +250,5 @@ for(const id of ["search","affiliate","category","product"]) {
 document.querySelector("#search-controls").addEventListener("toggle",persistDraft);
 // Restore the current announcement before deciding whether to collect again.
 void initializePopup().catch(error=>{status.textContent=error.message;});
+
+document.querySelector("#batch").addEventListener("click",()=>chrome.tabs.create({url:chrome.runtime.getURL("batch.html")}));

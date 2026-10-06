@@ -1,10 +1,23 @@
 {
   "manifest_version": 3,
   "name": "Comparacel — Importador de produtos",
-  "version": "1.1.10",
+  "version": "1.2.0",
   "description": "Importa o produto aberto no Mercado Livre ou Amazon para o Comparacel.",
-  "permissions": ["activeTab", "scripting", "storage"],
-  "optional_host_permissions": ["https://*/*"],
-  "host_permissions": ["http://localhost:3000/*", "https://comparacel.com.br/*", "https://www.comparacel.com.br/*"],
-  "action": { "default_popup": "popup.html", "default_title": "Coletar produto para o Comparacel" }
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://comparacel.com.br/*",
+    "https://www.comparacel.com.br/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Coletar produto para o Comparacel"
+  }
 }

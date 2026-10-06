@@ -11,7 +11,7 @@ import { fetchImportResource } from "@/lib/admin-import-fetch";
 import { inspectAdminImage } from "@/lib/admin-image";
 import { invalidateServerCatalog } from "@/lib/server-catalog";
 import { adminProductFromData } from "@/lib/admin-store";
-import { extensionProductIdentity, offerBelongsToSource, offerMatchesIdentity, extensionProductSummary, lookupExtensionProduct, suggestExtensionProducts, searchExtensionProducts } from "@/lib/extension-products";
+import { extensionPriceQueue, validateExtensionBatchOffer, extensionProductIdentity, offerBelongsToSource, offerMatchesIdentity, extensionProductSummary, lookupExtensionProduct, suggestExtensionProducts, searchExtensionProducts } from "@/lib/extension-products";
 import { revalidatePath } from "next/cache";
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -24,6 +24,12 @@ export async function GET(request:NextRequest) {
   try {
     headers=extensionHeaders(request);await requireExtension(request);
     const db=getAdminDatabase();const params=request.nextUrl.searchParams;
+    if(params.has("queue")) {
+      const days=Number(params.get("days") ?? 7);
+      if(!Number.isInteger(days) || days<1 || days>30)throw new AdminError("Intervalo inválido (1 a 30 dias).");
+      const products=await db.collection("products").get();
+      return NextResponse.json({queue:extensionPriceQueue(products.docs.map(doc=>adminProductFromData(doc.id,doc.data())),days)},{headers});
+    }
     if(params.has("pageUrl")) {
       const source=params.get("source");const pageUrl=params.get("pageUrl") ?? "";
       if(!["amazon","mercadolivre"].includes(source ?? "") || pageUrl.length>4500)throw new AdminError("Página inválida.");
@@ -64,6 +70,7 @@ export async function POST(request:NextRequest) {
       if(!doc.exists)throw new AdminError("Produto não encontrado.",404);
       existing=adminProductFromData(doc.id,doc.data()!);
     }
+    if(input.batch===true)validateExtensionBatchOffer(existing,capture.source,identity,input);
     if(mode!=="import" && !existing)throw new AdminError("Selecione um produto cadastrado.");
     if(mode==="unavailable" && !existing?.offers.some(offer=>offerBelongsToSource(offer,capture.source)))throw new AdminError("A ficha selecionada ainda não possui uma oferta desta loja.");
     const categorySlug=existing?.category ?? input.category;
@@ -93,7 +100,7 @@ export async function POST(request:NextRequest) {
       await file.save(image.bytes,{resumable:false,preconditionOpts:{ifGenerationMatch:0},metadata:{contentType:image.contentType,cacheControl:"public,max-age=31536000,immutable",metadata:{firebaseStorageDownloadTokens:randomUUID()}}});
       imageUrl=await getDownloadURL(file);
     }catch{warnings.push("Imagem não importada. Envie a imagem na edição do produto.");}
-    const result=await persistImportedProduct(db,actor,capture.source,collected,existing,categorySlug,imageUrl,mode);
+    const result=await persistImportedProduct(db,actor,capture.source,collected,existing,categorySlug,imageUrl,mode,input.batch===true?String(input.storeId):undefined);
     invalidateServerCatalog();revalidatePath(`/produto/${result.product.id}`);
     return NextResponse.json({product:extensionProductSummary(result.product),created:result.created,name:result.product.name,editPath:`/admin?produto=${encodeURIComponent(result.product.id)}`,warnings,message:result.created?"Rascunho importado. Confira no painel antes de ativar.":mode==="unavailable"?"Oferta desta loja marcada como indisponível. Link e outras lojas preservados.":mode==="price"?"Preço atualizado. Link de afiliado e ficha preservados.":mode==="offer"?"Oferta e link de afiliado salvos; as outras lojas foram mantidas.":mode==="full"?"Informações e oferta atualizadas. Publicação, avaliação e outras lojas preservadas.":"Produto atualizado; publicação e campos manuais preservados."},{headers});
   }catch(error){return NextResponse.json({error:error instanceof AdminError?error.message:"Não foi possível importar. Tente novamente."},{status:error instanceof AdminError?error.status:503,headers});}

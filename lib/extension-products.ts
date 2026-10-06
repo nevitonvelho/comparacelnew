@@ -1,3 +1,4 @@
+import { offerPriceFreshness, offerProductPage } from "./admin-price-freshness";
 import type { Firestore } from "firebase-admin/firestore";
 import { AdminError, type AdminProduct, slugify } from "./admin-model";
 import { parseImportLine, type ImportSource } from "./admin-import-model";
@@ -83,4 +84,28 @@ export async function suggestExtensionProducts(db: Firestore, pageName: string) 
     .map(product=>({product,score:extensionProductSimilarity(pageName,product.name)}))
     .filter(match=>match.score>0).sort((a,b)=>b.score-a.score || a.product.name.localeCompare(b.product.name))
     .slice(0,5).map(match=>extensionProductSummary(match.product));
+}
+
+export function extensionPriceQueue(products: AdminProduct[], days = 7, now = Date.now()) {
+  return products.flatMap(product => product.offers.flatMap(offer => {
+    const source = (["amazon", "mercadolivre"] as const).find(source => offerBelongsToSource(offer, source));
+    if (!source) return [];
+    const freshness = offerPriceFreshness(offer, days, now);
+    if (!["due", "never", "unavailable"].includes(freshness.state)) return [];
+    const pageUrl = offerProductPage(offer, source === "amazon" ? "Amazon" : "Mercado Livre");
+    // Short affiliate URLs without a known identity require manual review.
+    try {
+      const identity = extensionProductIdentity(pageUrl, source);
+      if (!offerMatchesIdentity(offer, source, identity)) return [];
+      return [{productId: product.id, name: product.name, storeId: offer.storeId, source, identity, pageUrl, offerUrl: offer.url, checkedAt: freshness.checkedAt}];
+    } catch { return []; }
+  })).sort((a, b) => (a.checkedAt ?? 0) - (b.checkedAt ?? 0) || a.name.localeCompare(b.name));
+}
+
+export function validateExtensionBatchOffer(product: AdminProduct | null, source: "amazon" | "mercadolivre", identity: string, input: Record<string, unknown>) {
+  if (input.mode !== "price" || !product || typeof input.storeId !== "string" || typeof input.offerUrl !== "string") throw new AdminError("Lote inválido.");
+  const offer = product.offers.find(offer => offer.storeId === input.storeId);
+  if (!offer || offer.url !== input.offerUrl || !offerBelongsToSource(offer, source) || !offerMatchesIdentity(offer, source, identity)) {
+    throw new AdminError("O anúncio não corresponde à oferta cadastrada. Revise no painel.", 409);
+  }
 }

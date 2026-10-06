@@ -58,8 +58,9 @@ test('Extension keys are hashed, replaceable, revocable and checked against curr
 });
 
 const productStubUrl=url('export const adminProductFromData=(id,data)=>({...data,id});');
-const extensionProductsUrl=url(compile(await readFile('lib/extension-products.ts','utf8')).replace('"./admin-model"',JSON.stringify(adminUrl)).replace('"./admin-import-model"',JSON.stringify(modelUrl)).replace('"./admin-store"',JSON.stringify(productStubUrl)));
-const {extensionProductIdentity,offerMatchesIdentity,lookupExtensionProduct,searchExtensionProducts,extensionProductSimilarity,suggestExtensionProducts}=await import(extensionProductsUrl);
+const freshnessUrl=url(compile(await readFile("lib/admin-price-freshness.ts","utf8")));
+const extensionProductsUrl=url(compile(await readFile('lib/extension-products.ts','utf8')).replace('"./admin-model"',JSON.stringify(adminUrl)).replace('"./admin-import-model"',JSON.stringify(modelUrl)).replace('"./admin-store"',JSON.stringify(productStubUrl)).replace('"./admin-price-freshness"',JSON.stringify(freshnessUrl)));
+const {extensionPriceQueue,validateExtensionBatchOffer,extensionProductIdentity,offerMatchesIdentity,lookupExtensionProduct,searchExtensionProducts,extensionProductSimilarity,suggestExtensionProducts}=await import(extensionProductsUrl);
 function productDatabase(records,mappings={}) {
   const snapshot=(id,data)=>({id,exists:!!data,data:()=>data});
   return {doc:path=>({get:async()=>{const [collection,id]=path.split('/');return snapshot(id,collection==='products'?records[id]:mappings[id]);}}),collection:()=>({get:async()=>({docs:Object.entries(records).map(([id,data])=>snapshot(id,data))})})};
@@ -252,4 +253,36 @@ test('product suggestions distinguish colors of the same model and handle legacy
   assert.equal(extensionProductSimilarity(name+'Grafite',name+'Verde'),0);
   assert.ok(extensionProductSimilarity(name+'Grafite',name+'Garfite')>0);
   assert.ok(extensionProductSimilarity(name,name+'Verde')>0);
+});
+
+
+test('batch queue prioritizes oldest checks and excludes fresh, unsupported and unidentified links',()=>{
+  const now=Date.parse('2026-10-06T12:00:00Z');
+  const offer={storeId:'amazon-custom',url:'https://amzn.to/saved',externalId:'B012345678',price:100,available:true};
+  const product={id:'phone',name:'Phone',offers:[offer]};
+  const queue=extensionPriceQueue([
+    {...product,id:'old',offers:[{...offer,priceUpdatedAt:'2026-09-01T12:00:00Z'}]},
+    product,
+    {...product,id:'fresh',offers:[{...offer,priceUpdatedAt:'2026-10-06T10:00:00Z'}]},
+    {...product,id:'short',offers:[{...offer,externalId:undefined}]},
+    {...product,id:'other',offers:[{...offer,url:'https://evil.example/product'}]},
+    {...product,id:'item',offers:[{...offer,storeId:'ml',url:'https://meli.la/saved',externalId:'item-MLB12345'}]}
+  ],7,now);
+  assert.deepEqual(queue.map(item=>item.productId),['phone','item','old']);
+  assert.equal(queue[0].pageUrl,'https://www.amazon.com.br/dp/B012345678');
+  assert.equal(queue[0].offerUrl,offer.url);
+  assert.equal(queue[1].identity,'item-MLB12345');
+  assert.equal(extensionPriceQueue([{...product,offers:[{...offer,priceUpdatedAt:'2026-10-04T12:00:00Z'}]}],1,now).length,1);
+});
+test('batch saves only the exact source, advertisement, store and unchanged affiliate snapshot',()=>{
+  const offer={storeId:'amazon-custom',url:'https://amzn.to/saved',externalId:'B012345678'};
+  const product={offers:[offer]};
+  const input={mode:'price',storeId:offer.storeId,offerUrl:offer.url};
+  validateExtensionBatchOffer(product,'amazon',offer.externalId,input);
+  for(const changes of [{storeId:'other'},{offerUrl:'https://amzn.to/changed'},{mode:'full'}]) {
+    assert.throws(()=>validateExtensionBatchOffer(product,'amazon',offer.externalId,{...input,...changes}));
+  }
+  assert.throws(()=>validateExtensionBatchOffer(product,'amazon','B099999999',input));
+  assert.throws(()=>validateExtensionBatchOffer(product,'mercadolivre',offer.externalId,input));
+  assert.throws(()=>validateExtensionBatchOffer(null,'amazon',offer.externalId,input));
 });
