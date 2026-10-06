@@ -2,7 +2,7 @@
 const $ = selector => document.querySelector(selector);
 const storageKey = "priceBatch";
 const origins = ["https://*.amazon.com.br/*", "https://*.mercadolivre.com.br/*"];
-let config, state, running = false, pauseRequested = false;
+let config, state, running = false, pauseRequested = false, lastWriteAt = 0;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function api(method, body, query = "") {
   const response = await fetch(`${config.site}/api/extension/import${query}`, {
@@ -17,8 +17,9 @@ async function save() { await chrome.storage.local.set({[storageKey]: state}); r
 function render() {
   const completed = state?.index || 0, total = state?.queue.length || 0;
   $("#progress").max = Math.max(total, 1); $("#progress").value = completed;
-  const updated = state?.results.filter(result => result.ok).length || 0;
-  $("#counts").textContent = `${completed} de ${total} ofertas conferidas; ${updated} atualizadas; ${completed - updated} para revisão.`;
+  const unavailable = state?.results.filter(result => result.ok && result.unavailable).length || 0;
+  const updated = state?.results.filter(result => result.ok && !result.unavailable).length || 0;
+  $("#counts").textContent = `${completed} de ${total} ofertas conferidas; ${updated} atualizadas; ${unavailable} indisponíveis; ${completed - updated - unavailable} para revisão.`;
   $("#start").disabled = running || !total || completed >= total;
   $("#start").textContent = completed || state?.tabId ? "Continuar atualização" : "Iniciar atualização";
   $("#load").disabled = running; $("#days").disabled = running; $("#pause").disabled = !running;
@@ -27,7 +28,7 @@ function render() {
   for (const result of state?.results || []) {
     const li = document.createElement("li"), link = document.createElement("a");
     link.href = result.pageUrl; link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = result.name;
-    li.append(link, ` — ${result.ok ? "Preço atualizado" : result.error}`); $("#results").append(li);
+    li.append(link, ` — ${result.ok ? (result.unavailable ? "Oferta marcada como indisponível" : "Preço atualizado") : result.error}`); $("#results").append(li);
   }
 }
 async function closeTab() {
@@ -35,28 +36,40 @@ async function closeTab() {
   state.tabId = null;
 }
 async function collect(tabId) {
-  const deadline = Date.now() + 45000;
+  const deadline = Date.now() + 20000;
+  let attempts = 0, previousUrl;
   while (Date.now() < deadline) {
     if (pauseRequested) return null;
     const tab = await chrome.tabs.get(tabId);
-    if (tab.status === "complete") {
-      try {
-        await chrome.scripting.executeScript({target: {tabId}, files: ["collect.js"]});
-        const [result] = await chrome.scripting.executeScript({target: {tabId}, func: () => {
-          try { return {capture: globalThis.collectProduct()}; } catch (error) { return {error: error.message}; }
-        }});
-        if (result?.result?.capture) return result.result.capture;
-        const message = result?.result?.error || "Não foi possível ler o anúncio.";
-        if (/verificação|captcha/i.test(message)) { const error = new Error(message); error.blocked = true; throw error; }
-        if (Date.now() + 3000 >= deadline) throw new Error(message);
-      } catch (error) {
-        if (error.blocked) throw error;
-        // Redirects to login/challenge hosts may prevent script injection.
-        if (/verification|captcha|\/login|signin/i.test(tab.url || "")) { error.blocked = true; throw error; }
-        if (Date.now() + 3000 >= deadline) throw error;
-      }
+    if (tab.status !== "complete") { await sleep(500); continue; }
+    if (previousUrl !== tab.url) { attempts = 0; previousUrl = tab.url; }
+    let data;
+    try {
+      await chrome.scripting.executeScript({target: {tabId}, files: ["collect.js"]});
+      const [result] = await chrome.scripting.executeScript({target: {tabId}, func: () => {
+        try { return {capture: globalThis.collectProduct()}; } catch (error) {
+          const name = document.querySelector("#productTitle, .ui-pdp-title")?.textContent.trim();
+          // Missing price on an identifiable product page; never synthesize a
+          // capture for a challenge, failed navigation or a generic error page.
+          const missingPrice = /preço principal|confirmar o preço/.test(error.message);
+          const capture = missingPrice && name ? {version: 1, source: location.hostname.includes("amazon") ? "amazon" : "mercadolivre", pageUrl: location.href, capturedAt: new Date().toISOString(), name: name.slice(0,300), price: null, condition: "standard", brand: "Genérico", description: "", imageUrl: "", specs: []} : null;
+          return {error: error.message, unavailableCapture: capture};
+        }
+      }});
+      data = result?.result;
+    } catch (error) {
+      if (/verification|captcha|\/login|signin/i.test(tab.url || "")) error.blocked = true;
+      throw error;
     }
-    await sleep(3000);
+    if (data?.capture) return data.capture;
+    const message = data?.error || "Não foi possível ler o anúncio.";
+    if (/verificação|captcha/i.test(message)) { const error = new Error(message); error.blocked = true; throw error; }
+    attempts++;
+    if (attempts >= 3) {
+      if (data?.unavailableCapture) return data.unavailableCapture;
+      throw new Error(message);
+    }
+    await sleep(1500);
   }
   throw new Error("A página demorou para carregar. Confira o anúncio manualmente.");
 }
@@ -76,8 +89,12 @@ async function run() {
           if (!state.tabId) { const tab = await chrome.tabs.create({url: item.pageUrl, active: false}); state.tabId = tab.id; await save(); }
           const capture = await collect(state.tabId);
           if (!capture || pauseRequested) break;
-          await api("POST", {mode: "price", batch: true, productId: item.productId, storeId: item.storeId, offerUrl: item.offerUrl, capture});
-          state.results.push({...item, ok: true});
+          await sleep(Math.max(0, lastWriteAt + 4100 - Date.now()));
+          if (pauseRequested) break;
+          lastWriteAt = Date.now();
+          const unavailable = capture.price === null;
+          await api("POST", {mode: unavailable ? "unavailable" : "price", batch: true, productId: item.productId, storeId: item.storeId, offerUrl: item.offerUrl, capture});
+          state.results.push({...item, ok: true, unavailable});
         } catch (error) {
           if (error.blocked || [401, 403, 429].includes(error.status) || !error.status && /fetch|network|timeout/i.test(error.message)) {
             $("#status").textContent = `${error.message} Atualização pausada. Resolva e clique em Continuar.`;
@@ -87,7 +104,6 @@ async function run() {
           state.results.push({...item, ok: false, error: error.message});
         }
         state.index++; await closeTab(); await save();
-        await sleep(5000);
       }
       if (!pauseRequested) $("#status").textContent = "Atualização concluída. Confira as pendências abaixo.";
       else if ($("#status").textContent.startsWith("Pausando")) $("#status").textContent = "Atualização pausada. Clique em Continuar quando desejar.";

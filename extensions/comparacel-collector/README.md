@@ -92,6 +92,10 @@ As sugestões diferenciam cores quando ambas as fichas informam a cor. A mensage
 2. Escolha o intervalo (padrão: sete dias) e clique em **Carregar ofertas desatualizadas**. Ofertas sem data também entram; links sem identificador de anúncio ficam para conferência manual. Inclui rascunhos e ofertas indisponíveis para permitir reativação quando houver preço válido.
 3. Clique em **Iniciar atualização** e permita o acesso à Amazon e ao Mercado Livre quando o navegador pedir. O lote abre uma aba de coleta por vez, salva apenas o preço/condição, preserva o afiliado e avança com intervalo entre anúncios.
 4. Use **Pausar** e **Continuar atualização** quando necessário. Se aparecer uma verificação da loja, o lote pausa e abre a aba correspondente; resolva nela antes de continuar. Pode também deixar esse anúncio para revisão e continuar a fila.
-5. Confira o progresso e as pendências. Falhas não apagam o preço anterior nem marcam ofertas automaticamente como indisponíveis. Uma coleta válida reativa a oferta.
+5. Confira o progresso e as pendências. Anúncios identificados sem preço são marcados como indisponíveis após três leituras rápidas. O último preço e o afiliado são preservados. Erros de navegação, verificações de acesso e anúncios diferentes não alteram a disponibilidade. Uma coleta válida reativa a oferta.
 
 O servidor confirma o produto, a loja, o identificador do anúncio e o link cadastrado antes de salvar. Um redirecionamento para outro anúncio ou uma oferta alterada após carregar a fila exige revisão. O lote mantém o limite existente de 200 operações por hora; ao atingir o limite, pausa. Fechar a tela ou o navegador interrompe a execução; reabrir recupera o último progresso salvo, sem iniciar sozinho. Apenas um lote executa por vez. A chave de conexão precisa continuar válida e o servidor e a extensão precisam estar atualizados.
+
+### Lote mais rápido (1.2.1)
+
+A página tem até 20 segundos para carregar. Depois de carregada, o lote tenta ler o preço três vezes, com intervalo de 1,5 segundo. Se houver título do produto e faltar preço, marca somente aquela oferta como indisponível. As gravações respeitam o intervalo mínimo do servidor (4,1 segundos), sem esperar cinco segundos adicionais entre anúncios.

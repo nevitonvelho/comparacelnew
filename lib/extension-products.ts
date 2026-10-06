@@ -103,7 +103,7 @@ export function extensionPriceQueue(products: AdminProduct[], days = 7, now = Da
 }
 
 export function validateExtensionBatchOffer(product: AdminProduct | null, source: "amazon" | "mercadolivre", identity: string, input: Record<string, unknown>) {
-  if (input.mode !== "price" || !product || typeof input.storeId !== "string" || typeof input.offerUrl !== "string") throw new AdminError("Lote inválido.");
+  if (!["price", "unavailable"].includes(String(input.mode)) || !product || typeof input.storeId !== "string" || typeof input.offerUrl !== "string") throw new AdminError("Lote inválido.");
   const offer = product.offers.find(offer => offer.storeId === input.storeId);
   if (!offer || offer.url !== input.offerUrl || !offerBelongsToSource(offer, source) || !offerMatchesIdentity(offer, source, identity)) {
     throw new AdminError("O anúncio não corresponde à oferta cadastrada. Revise no painel.", 409);

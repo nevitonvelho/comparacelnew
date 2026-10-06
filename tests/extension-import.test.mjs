@@ -279,6 +279,7 @@ test('batch saves only the exact source, advertisement, store and unchanged affi
   const product={offers:[offer]};
   const input={mode:'price',storeId:offer.storeId,offerUrl:offer.url};
   validateExtensionBatchOffer(product,'amazon',offer.externalId,input);
+  validateExtensionBatchOffer(product,'amazon',offer.externalId,{...input,mode:'unavailable'});
   for(const changes of [{storeId:'other'},{offerUrl:'https://amzn.to/changed'},{mode:'full'}]) {
     assert.throws(()=>validateExtensionBatchOffer(product,'amazon',offer.externalId,{...input,...changes}));
   }

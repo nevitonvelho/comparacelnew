@@ -14,16 +14,16 @@ try {
     const item={productId:'phone',name:'Phone',source:'amazon',storeId:'amazon',identity:'B012345678',offerUrl:'https://amzn.to/owner',pageUrl:'https://www.amazon.com.br/dp/B012345678'};
     const data={site:'http://localhost:3000',key:'ccx_'+'a'.repeat(64)};
     const tabs=new Map();let nextId=1;
-    globalThis.batchTest={data,tabs,posts:[],blocked:true};
+    globalThis.batchTest={data,tabs,posts:[],blocked:true,missing:false};
     const timer=window.setTimeout.bind(window);
-    window.setTimeout=(fn,ms,...args)=>timer(fn,[3000,5000].includes(ms)?1:ms,...args);
+    window.setTimeout=(fn,ms,...args)=>timer(fn,ms <= 5000?1:ms,...args);
     globalThis.chrome={
       storage:{local:{get:async keys=>Object.fromEntries((Array.isArray(keys)?keys:[keys]).map(key=>[key,structuredClone(data[key])])),set:async values=>Object.assign(data,structuredClone(values))}},
       permissions:{request:async()=>true},
       tabs:{create:async options=>{const tab={id:nextId++,url:options.url,status:'complete'};tabs.set(tab.id,tab);return tab;},get:async id=>{if(!tabs.has(id))throw new Error('Closed');return tabs.get(id);},remove:async id=>tabs.delete(id),update:async()=>{}},
       scripting:{executeScript:async options=>{
         if(options.files)return [];
-        return [{result:batchTest.blocked?{error:'Conclua a verificação da Amazon e abra o produto.'}:{capture:{source:'amazon',pageUrl:item.pageUrl,price:123}}}];
+        return [{result:batchTest.blocked?{error:'Conclua a verificação da Amazon e abra o produto.'}:batchTest.missing?{error:'O preço principal não está disponível na página.',unavailableCapture:{source:'amazon',pageUrl:item.pageUrl,price:null}}:{capture:{source:'amazon',pageUrl:item.pageUrl,price:123}}}];
       }}
     };
     window.fetch=async (_url,options)=>{
@@ -43,7 +43,7 @@ try {
   await page.evaluate(()=>{batchTest.blocked=false;});
   await page.click('#start');
   await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('concluída'));
-  assert.equal(await page.locator('#counts').textContent(),'2 de 2 ofertas conferidas; 1 atualizadas; 1 para revisão.');
+  assert.equal(await page.locator('#counts').textContent(),'2 de 2 ofertas conferidas; 1 atualizadas; 0 indisponíveis; 1 para revisão.');
   assert.equal(await page.evaluate(()=>batchTest.tabs.size),0);
   const saved=await page.evaluate(()=>batchTest.data.priceBatch);
   assert.equal(saved.results[0].ok,true);assert.equal(saved.results[1].ok,false);
@@ -57,5 +57,13 @@ try {
   await page.waitForFunction(()=>document.querySelector('#counts').textContent.startsWith('1 de 2'));
   assert.equal(await page.evaluate(()=>batchTest.tabs.size),0);
   assert.match(await page.locator('#results').textContent(),/Separado para revisão manual/);
+  await page.click('#load');
+  await page.evaluate(()=>{batchTest.blocked=false;batchTest.missing=true;batchTest.posts=[];});
+  await page.click('#start');
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('concluída'));
+  assert.match(await page.locator('#counts').textContent(),/0 atualizadas; 1 indisponíveis; 1 para revisão/);
+  assert.equal(await page.evaluate(()=>batchTest.posts[0].mode),'unavailable');
+  assert.equal(await page.evaluate(()=>batchTest.posts[0].capture.price),null);
+  assert.match(await page.locator('#results').textContent(),/Oferta marcada como indisponível/);
   console.log('Batch browser flow passed: queue, challenge pause, resume, exact-offer payload, pending failure and progress.');
 } finally {await browser.close();}
