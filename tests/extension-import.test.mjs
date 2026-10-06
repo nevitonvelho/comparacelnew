@@ -256,7 +256,7 @@ test('product suggestions distinguish colors of the same model and handle legacy
 });
 
 
-test('batch queue prioritizes oldest checks and excludes fresh, unsupported and unidentified links',()=>{
+test('batch queue includes fresh prices and every identified offer without a quantity limit',()=>{
   const now=Date.parse('2026-10-06T12:00:00Z');
   const offer={storeId:'amazon-custom',url:'https://amzn.to/saved',externalId:'B012345678',price:100,available:true};
   const product={id:'phone',name:'Phone',offers:[offer]};
@@ -267,12 +267,14 @@ test('batch queue prioritizes oldest checks and excludes fresh, unsupported and 
     {...product,id:'short',offers:[{...offer,externalId:undefined}]},
     {...product,id:'other',offers:[{...offer,url:'https://evil.example/product'}]},
     {...product,id:'item',offers:[{...offer,storeId:'ml',url:'https://meli.la/saved',externalId:'item-MLB12345'}]}
-  ],7,now);
-  assert.deepEqual(queue.map(item=>item.productId),['phone','item','old']);
+  ],now);
+  assert.deepEqual(queue.map(item=>item.productId),['phone','item','old','fresh']);
   assert.equal(queue[0].pageUrl,'https://www.amazon.com.br/dp/B012345678');
   assert.equal(queue[0].offerUrl,offer.url);
   assert.equal(queue[1].identity,'item-MLB12345');
-  assert.equal(extensionPriceQueue([{...product,offers:[{...offer,priceUpdatedAt:'2026-10-04T12:00:00Z'}]}],1,now).length,1);
+  const many=Array.from({length:250},(_,index)=>({...product,id:`phone-${index}`,isActive:index%2===0,offers:[{...offer,priceUpdatedAt:'2026-10-06T10:00:00Z'},{...offer,storeId:'ml',externalId:'MLB12345',url:'https://meli.la/saved',available:false}]}));
+  assert.equal(extensionPriceQueue(many,now).length,500);
+  assert.equal(extensionPriceQueue([{...product,offers:[{...offer,priceUpdatedAt:'2026-10-04T12:00:00Z'}]}],now).length,1);
 });
 test('batch saves only the exact source, advertisement, store and unchanged affiliate snapshot',()=>{
   const offer={storeId:'amazon-custom',url:'https://amzn.to/saved',externalId:'B012345678'};

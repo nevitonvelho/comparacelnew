@@ -25,10 +25,8 @@ export async function GET(request:NextRequest) {
     headers=extensionHeaders(request);await requireExtension(request);
     const db=getAdminDatabase();const params=request.nextUrl.searchParams;
     if(params.has("queue")) {
-      const days=Number(params.get("days") ?? 7);
-      if(!Number.isInteger(days) || days<1 || days>30)throw new AdminError("Intervalo inválido (1 a 30 dias).");
       const products=await db.collection("products").get();
-      return NextResponse.json({queue:extensionPriceQueue(products.docs.map(doc=>adminProductFromData(doc.id,doc.data())),days)},{headers});
+      return NextResponse.json({queue:extensionPriceQueue(products.docs.map(doc=>adminProductFromData(doc.id,doc.data())))},{headers});
     }
     if(params.has("pageUrl")) {
       const source=params.get("source");const pageUrl=params.get("pageUrl") ?? "";

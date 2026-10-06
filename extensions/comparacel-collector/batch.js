@@ -22,7 +22,7 @@ function render() {
   $("#counts").textContent = `${completed} de ${total} ofertas conferidas; ${updated} atualizadas; ${unavailable} indisponíveis; ${completed - updated - unavailable} para revisão.`;
   $("#start").disabled = running || !total || completed >= total;
   $("#start").textContent = completed || state?.tabId ? "Continuar atualização" : "Iniciar atualização";
-  $("#load").disabled = running; $("#days").disabled = running; $("#pause").disabled = !running;
+  $("#load").disabled = running; $("#pause").disabled = !running;
   $("#skip").hidden = running || !state?.tabId || completed >= total;
   $("#results").replaceChildren();
   for (const result of state?.results || []) {
@@ -114,15 +114,13 @@ async function run() {
 $("#load").addEventListener("click", async () => {
   $("#load").disabled = true;
   try {
-    const days = Number($("#days").value);
-    if (!Number.isInteger(days) || days < 1 || days > 30) throw new Error("Escolha um intervalo de 1 a 30 dias.");
-    const data = await api("GET", null, `?queue=1&days=${days}`);
+    const data = await api("GET", null, "?queue=1");
     if (!Array.isArray(data.queue)) throw new Error("O site conectado ainda não suporta a fila. Atualize o servidor Comparacel e tente novamente.");
     await navigator.locks.request("comparacel-price-batch", {ifAvailable: true}, async lock => {
       if (!lock) throw new Error("Já existe uma atualização em andamento em outra tela.");
       if (state) await closeTab();
       state = {site: config.site, queue: data.queue, index: 0, results: [], tabId: null}; await save();
-      $("#status").textContent = data.queue.length ? `${data.queue.length} ofertas na fila. Clique em Iniciar atualização.` : "Nenhuma oferta com identificador precisa de atualização nesse intervalo.";
+      $("#status").textContent = data.queue.length ? `${data.queue.length} ofertas na fila. Clique em Iniciar atualização.` : "Nenhuma oferta da Amazon ou Mercado Livre com identificador foi encontrada.";
     });
   } catch (error) { $("#status").textContent = error.message; }
   finally { render(); }
@@ -151,5 +149,5 @@ $("#skip").addEventListener("click", async () => {
   if (!config.site || !config.key) return;
   const saved = (await chrome.storage.local.get(storageKey))[storageKey];
   state = saved?.site === config.site ? saved : null; render();
-  $("#status").textContent = state ? "Progresso recuperado. Clique em Continuar ou carregue uma nova fila." : "Conectado. Carregue as ofertas desatualizadas.";
+  $("#status").textContent = state ? "Progresso recuperado. Clique em Continuar ou carregue uma nova fila." : "Conectado. Carregue todas as ofertas.";
 })();

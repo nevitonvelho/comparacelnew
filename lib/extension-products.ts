@@ -86,12 +86,11 @@ export async function suggestExtensionProducts(db: Firestore, pageName: string) 
     .slice(0,5).map(match=>extensionProductSummary(match.product));
 }
 
-export function extensionPriceQueue(products: AdminProduct[], days = 7, now = Date.now()) {
+export function extensionPriceQueue(products: AdminProduct[], now = Date.now()) {
   return products.flatMap(product => product.offers.flatMap(offer => {
     const source = (["amazon", "mercadolivre"] as const).find(source => offerBelongsToSource(offer, source));
     if (!source) return [];
-    const freshness = offerPriceFreshness(offer, days, now);
-    if (!["due", "never", "unavailable"].includes(freshness.state)) return [];
+    const freshness = offerPriceFreshness(offer, 7, now);
     const pageUrl = offerProductPage(offer, source === "amazon" ? "Amazon" : "Mercado Livre");
     // Short affiliate URLs without a known identity require manual review.
     try {
