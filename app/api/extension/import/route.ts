@@ -82,11 +82,12 @@ export async function POST(request:NextRequest) {
     const line=capture.source==="amazon"?affiliateUrl:`${affiliateUrl} ${capture.pageUrl}`;
     const collected=collectedFromProductCapture(capture,line);
     const budget=db.doc(`adminImportBudgets/${actor.uid}`);const lease=randomUUID();
+    const priceUpdate=mode==="price" || mode==="unavailable";
     await db.runTransaction(async tx=>{
       const old=(await tx.get(budget)).data() ?? {};const now=Date.now();const same=now-Number(old.windowAt ?? 0)<3600000;
       if(Number(old.lockUntil)>now || now-Number(old.lastAt ?? 0)<4000)throw new AdminError("Aguarde a importação em andamento e tente novamente.",429);
-      if(same && Number(old.count)>=200)throw new AdminError("Limite de 200 importações por hora.",429);
-      tx.set(budget,{lease,lockUntil:now+90000,lastAt:now,windowAt:same?old.windowAt:now,count:same?Number(old.count ?? 0)+1:1});
+      if(!priceUpdate && same && Number(old.count)>=200)throw new AdminError("Limite de 200 importações por hora.",429);
+      tx.set(budget,{lease,lockUntil:now+90000,lastAt:now,windowAt:same?old.windowAt:now,count:(same?Number(old.count ?? 0):0)+(priceUpdate?0:1)});
     });
     release=()=>db.runTransaction(async tx=>{if((await tx.get(budget)).data()?.lease===lease)tx.update(budget,{lockUntil:0});});
     const warnings:string[]=[];let imageUrl="";

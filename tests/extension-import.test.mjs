@@ -126,6 +126,24 @@ function routeFixture() {
   return {record,records};
 }
 const sendExtension=body=>extensionPost({body});
+test('price refresh bypasses exhausted import quota without consuming it and retains operation guards',async()=>{
+  const {record}=routeFixture();
+  let budget={windowAt:Date.now(),count:200,lastAt:0,lockUntil:0};
+  globalThis.extensionRoute.db.runTransaction=async run=>run({get:async()=>({data:()=>budget}),set:(_ref,data)=>{budget=data;},update:(_ref,data)=>{Object.assign(budget,data);}});
+  const body={capture:{...capture,source:'amazon',pageUrl:'https://www.amazon.com.br/dp/B012345678'},productId:record.id,batch:true,storeId:'amazon',offerUrl:'https://amzn.to/owner'};
+  for(const mode of ['price','unavailable']) {
+    budget.lastAt=0;
+    const response=await sendExtension({...body,mode,capture:{...body.capture,price:mode==='unavailable'?null:105}});
+    assert.equal(response.status,200);
+    assert.equal(budget.count,200);
+    assert.equal(budget.lockUntil,0);
+  }
+  assert.equal((await sendExtension({...body,mode:'price'})).status,429);
+  budget.lastAt=0;budget.lockUntil=Date.now()+90000;
+  assert.equal((await sendExtension({...body,mode:'price'})).status,429);
+  budget.lockUntil=0;
+  assert.equal((await sendExtension({...body,batch:false,mode:'full'})).status,429);
+});
 test('extension API links Mercado to an Amazon product, then recognizes and updates only its price',async()=>{
   const {record,records}=routeFixture();
   const added=await sendExtension({capture,mode:'offer',productId:'lavadora',affiliateUrl:'https://meli.la/owner'});
