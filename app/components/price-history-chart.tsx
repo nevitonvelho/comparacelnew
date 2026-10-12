@@ -10,7 +10,7 @@ export function PriceHistoryChart({points,stores,unavailable=false}:{points:Pric
   const ids=[...new Set(points.map(point=>point.storeId))];
   const series=ids.map((id,index)=>{
     const name=stores.find(store=>store.id===id)?.name ?? "Loja";
-    const color=/amazon/i.test(name)?"#df5015":/mercado\s*livre/i.test(name)?"#1670b8":palette[(index+2)%palette.length];
+    const color=/amazon/i.test(name)?"#df5015":/mercado\s*livre/i.test(name)?"#e5b800":palette[(index+2)%palette.length];
     const values=points.filter(point=>point.storeId===id).sort((a,b)=>Date.parse(a.date)-Date.parse(b.date)).slice(-120);
     return {id,name,color,values};
   });

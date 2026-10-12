@@ -1,6 +1,7 @@
 "use client";
 import { UiIcon } from "./icons";
 import { AffiliateDisclosure } from "./affiliate-link";
+import { AppDownloads } from "./app-downloads";
 import Image from "next/image";
 import Form from "next/form";
 import Link from "next/link";
@@ -31,6 +32,7 @@ export function Footer() {
       <nav className="footer-nav" aria-label="Explore o Comparacel"><h3>Explore</h3><Link href="/">Início</Link><Link href="/catalogo">Todos os produtos</Link><Link href="/comparar">Comparar produtos</Link><Link href="/comunidade">Mais comparados</Link><Link href="/minha-conta">Minha conta e favoritos</Link></nav>
       <nav className="footer-nav" aria-label="Categorias no rodapé"><h3>Categorias</h3>{categories.map(category=><Link key={category.id} href={`/${category.id}`}>{category.name}</Link>)}<Link href="/catalogo" className="footer-all-categories">Ver todas as categorias <UiIcon name="right" /></Link></nav>
     </div>
+    <AppDownloads />
     <AffiliateDisclosure />
     <div className="footer-bottom"><small>© {new Date().getFullYear()} Comparacel</small><p>Preços e disponibilidade podem mudar. Confirme as condições na loja antes de comprar.</p><a href="#conteudo" className="footer-back-top">Voltar ao conteúdo ↑</a></div>
   </div></footer>;

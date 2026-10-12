@@ -1,6 +1,7 @@
 import { readCategorySettings } from "@/lib/category-settings";
 import { getAdminDatabase } from "@/lib/firebase/admin";
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import { Suspense } from "react";
 import { GoogleTagManager } from "./components/google-tag-manager";
 import { ConversionTracking } from "./components/conversion-tracking";
@@ -13,6 +14,14 @@ import { AuthProvider } from "./components/auth-provider";
 import { LibraryProvider } from "./components/library-provider";
 import { ReactionProvider } from "./components/reaction-provider";
 import "./globals.css";
+const inter = localFont({
+  src: "./fonts/InterVariable.woff2",
+  variable: "--font-inter",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
+  fallback: ["Arial"],
+});
 export const dynamic = "force-dynamic";
 const gtmId = process.env.NEXT_PUBLIC_GTM_ID || "GTM-PN53J4BW";
 export const metadata: Metadata = {
@@ -28,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const categorySettings = await readCategorySettings(getAdminDatabase());
   // Extensions may insert attributes on body before React hydrates it.
   // Suppression is limited to this element; child components retain diagnostics.
-  return <html lang="pt-BR"><head>
+  return <html lang="pt-BR" className={inter.variable}><head>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3752361675797235" crossOrigin="anonymous" />
   </head><body suppressHydrationWarning>
     {/^GTM-[A-Z0-9]+$/.test(gtmId) && <noscript><iframe src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`} height="0" width="0" style={{ display: "none", visibility: "hidden" }} title="Google Tag Manager" /></noscript>}
