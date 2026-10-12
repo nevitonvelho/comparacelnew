@@ -3,6 +3,9 @@ import { Comparison } from "../../components/comparison";
 import { JsonLd } from "../../components/json-ld";
 import { getComparisonPair } from "@/lib/server-catalog";
 import { absoluteUrl, breadcrumbs, pageMetadata } from "@/lib/seo";
+// Generate and cache each URL on its first request, including new products.
+export async function generateStaticParams() { return []; }
+export const revalidate = 1800;
 type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props) {
   const pair = await getComparisonPair((await params).slug);

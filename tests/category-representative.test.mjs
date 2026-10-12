@@ -8,6 +8,7 @@ const model=url(compile(await readFile('lib/admin-model.ts','utf8')));
 let source=compile(await readFile('app/api/admin/categories/route.ts','utf8'));
 const deps={
  'next/server':url('export const NextResponse={json:(body,options)=>({body,...options})};'),
+ '@/lib/server-catalog':url('export const invalidateServerCatalog=()=>{};'),
  'next/cache':url('export const revalidatePath=()=>{};'),
  '@/lib/admin-api':url('export const adminHeaders={};export const requireAdministrator=async()=>({uid:"owner"});export const readAdminJson=async request=>request.body;export const adminFailure=error=>({status:error.status??500,body:{error:error.message}});'),
  '@/lib/admin-model':model,

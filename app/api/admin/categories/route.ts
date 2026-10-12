@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { invalidateServerCatalog } from "@/lib/server-catalog";
 import { revalidatePath } from "next/cache";
 import { adminFailure, adminHeaders, readAdminJson, requireAdministrator } from "@/lib/admin-api";
 import { AdminError, slugify } from "@/lib/admin-model";
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
         tx.create(db.collection("adminAudit").doc(),{action:"categories-home-updated",name:"Categorias da home",actorUid:actor.uid,actorEmail:actor.email ?? "",createdAt:new Date()});
       });
     }
+    invalidateServerCatalog();
     revalidatePath("/","layout");
     return NextResponse.json({saved:true},{headers:adminHeaders});
   } catch(error){return adminFailure(error);}

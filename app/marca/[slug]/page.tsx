@@ -3,6 +3,9 @@ import { getServerBrands } from "@/lib/server-catalog";
 import { breadcrumbs, pageMetadata } from "@/lib/seo";
 import { Catalog } from "../../components/catalog";
 import { JsonLd } from "../../components/json-ld";
+// Generate and cache each URL on its first request, including new products.
+export async function generateStaticParams() { return []; }
+export const revalidate = 1800;
 type Props = { params: Promise<{ slug: string }> };
 async function getBrand(props: Props) {
   const { slug } = await props.params;

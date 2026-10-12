@@ -9,15 +9,15 @@ import type { CategorySettings } from "@/lib/category-settings";
 import { categoryNames as defaultCategoryNames } from "@/lib/product-model";
 type Catalog = { categorySettings: CategorySettings; categoryNames: Record<string, string>; products: Product[]; selected: string[]; status: "loading" | "ready" | "error"; message: string; toggle: (product: Product) => void; choose: (index: number, id: string) => void; setPair: (ids: string[]) => void; clear: () => void; retry: () => void };
 const Context = createContext<Catalog | null>(null);
-export function CatalogProvider({ children, initialProducts = [], categorySettings = { categories: Object.entries(defaultCategoryNames).map(([id,name],order)=>({id,name,order,showOnHome:true})), homeLimit: 11 } }: { children: ReactNode; initialProducts?: Product[]; categorySettings?: CategorySettings }) {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+export function CatalogProvider({ children, initialProducts, categorySettings = { categories: Object.entries(defaultCategoryNames).map(([id,name],order)=>({id,name,order,showOnHome:true})), homeLimit: 11 } }: { children: ReactNode; initialProducts?: Product[]; categorySettings?: CategorySettings }) {
+  const [products, setProducts] = useState<Product[]>(initialProducts ?? []);
   const [selected, setSelected] = useState<string[]>([]);
-  const [status, setStatus] = useState<Catalog["status"]>(initialProducts.length ? "ready" : "loading");
+  const [status, setStatus] = useState<Catalog["status"]>(initialProducts !== undefined ? "ready" : "loading");
   const [message, setMessage] = useState("");
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let active = true;
-    const request = attempt === 0 && initialProducts.length ? Promise.resolve(initialProducts) : loadProducts();
+    const request = attempt === 0 && initialProducts !== undefined ? Promise.resolve(initialProducts) : loadProducts();
     request.then(items => {
       if (!active) return;
       setProducts(items); setStatus("ready");

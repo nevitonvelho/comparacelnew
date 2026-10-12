@@ -1,4 +1,4 @@
-import { getAdminDatabase } from "@/lib/firebase/admin";
+import { getServerPriceHistory } from "@/lib/server-public-data";
 import { priceHistoryPoints } from "@/lib/price-history";
 import { notFound } from "next/navigation";
 import { ProductDetail } from "../../components/product-detail";
@@ -6,6 +6,9 @@ import { JsonLd } from "../../components/json-ld";
 import { readServerProduct } from "@/lib/server-product";
 import { breadcrumbs, pageMetadata, productDescription, productSchema } from "@/lib/seo";
 import { categoryNames } from "@/lib/product-model";
+// Generate and cache each URL on its first request, including new products.
+export async function generateStaticParams() { return []; }
+export const revalidate = 1800;
 type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props) {
   const product = await readServerProduct((await params).slug);
@@ -19,8 +22,7 @@ export default async function Page({ params }: Props) {
   let history: ReturnType<typeof priceHistoryPoints> = [];
   let historyUnavailable = false;
   try {
-    const snapshot = await getAdminDatabase().collection("priceHistory").where("productSlug", "==", slug).get();
-    history = priceHistoryPoints(snapshot.docs.map(doc=>doc.data()));
+    history = await getServerPriceHistory(slug);
   } catch { historyUnavailable = true; }
   return <><JsonLd data={productSchema(product)} /><JsonLd data={breadcrumbs([{ name: "Início", path: "/" }, { name: categoryNames[product.category] ?? "Catálogo", path: `/${product.category}` }, { name: product.name, path: `/produto/${product.id}` }])} /><ProductDetail slug={slug} product={product} history={history} historyUnavailable={historyUnavailable} /></>;
 }
