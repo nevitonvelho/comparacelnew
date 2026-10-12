@@ -3,6 +3,7 @@ import { getAdminDatabase } from "@/lib/firebase/admin";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { GoogleTagManager } from "./components/google-tag-manager";
+import { ConversionTracking } from "./components/conversion-tracking";
 import { getServerProducts } from "@/lib/server-catalog";
 import { absoluteUrl, pageMetadata, siteUrl, siteName } from "@/lib/seo";
 import { JsonLd } from "./components/json-ld";
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
 };
-export const viewport: Viewport = { themeColor: "#ff6420" };
+export const viewport: Viewport = { themeColor: "#0061e8" };
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const products = await getServerProducts();
   const categorySettings = await readCategorySettings(getAdminDatabase());
@@ -32,7 +33,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   </head><body suppressHydrationWarning>
     {/^GTM-[A-Z0-9]+$/.test(gtmId) && <noscript><iframe src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`} height="0" width="0" style={{ display: "none", visibility: "hidden" }} title="Google Tag Manager" /></noscript>}
     <Suspense fallback={null}><GoogleTagManager /></Suspense>
-    <JsonLd data={{ "@context": "https://schema.org", "@type": "Organization", name: siteName, url: siteUrl, logo: absoluteUrl("/brand/comparacel.png") }} />
+    <ConversionTracking />
+    <JsonLd data={{ "@context": "https://schema.org", "@type": "Organization", name: siteName, url: siteUrl, logo: absoluteUrl("/brand/comparacel-blue-teal.webp") }} />
     <AuthProvider><LibraryProvider><ReactionProvider><CatalogProvider initialProducts={products} categorySettings={categorySettings}><a className="skip-link" href="#conteudo">Pular para o conteúdo</a><Header />{children}<Footer /><ComparisonBar /></CatalogProvider></ReactionProvider></LibraryProvider></AuthProvider>
   </body></html>;
 }

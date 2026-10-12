@@ -36,7 +36,8 @@ export function Notifications() {
       if(!product || !alternative || product.category!==alternative.category) return [];
       return [{id:message.pair,product,alternative,reason:"Uma alternativa da mesma categoria para você comparar.",createdAt:message.createdAt,href:`/comparar/${message.pair}`}];
     });
-    if(created && ledger.shownDay!==ledger.day){setOpen(true);ledger.shownDay=ledger.day;}
+    // Suggestions update the badge without interrupting browsing.
+    if(created)ledger.shownDay=ledger.day;
     memory.current={key,value:ledger};
     try {localStorage.setItem(key,JSON.stringify(ledger));} catch { /* Keep the daily cap in memory. */ }
     setState({uid:user.uid,suggestions});
@@ -67,5 +68,22 @@ export function Notifications() {
     try{localStorage.setItem(memory.current.key,JSON.stringify(ledger));}catch{ /* Retain changes for this visit. */ }
     setState(old=>old?.uid===user!.uid?{...old,suggestions:old.suggestions.filter(item=>item.id!==id)}:old);
   }
-  return <div className="notifications" ref={container}><button type="button" className="header-icon-button" aria-label={`Notificações${unread?`, ${unread} não lidas`:""}`} title="Notificações" aria-expanded={open} aria-controls="notifications-panel" onClick={()=>setOpen(value=>!value)}><UiIcon name="bell" />{unread>0 && <span className="notification-count">{unread}</span>}</button>{open && <section className="notification-panel" id="notifications-panel" aria-label="Notificações"><div className="notification-heading"><strong>Notificações</strong><button type="button" className="header-icon-button" aria-label="Fechar notificações" onClick={()=>setOpen(false)}><UiIcon name="close" /></button></div><p>Sugestões baseadas nos produtos visitados e nos seus favoritos.</p>{libraryError?<p role="alert">Não foi possível carregar seus favoritos.</p>:loading || !ready && !pathname.startsWith("/admin")?<p role="status">Carregando…</p>:!suggestions.length?<p>Explore uma categoria, visite um produto ou marque um favorito para receber sugestões. Até seis por dia, com intervalo de 10 minutos.</p>:<ul>{suggestions.map(item=><li key={item.id} className="unread"><strong>Compare {item.product.name}</strong><p>Que tal comparar com {item.alternative.name}? {item.reason}</p><div><Link href={item.href} className="section-link" onClick={()=>{setOpen(false);void markRead(item.id);}}>Comparar produtos <UiIcon name="right" /></Link>{<button type="button" className="text-button" onClick={()=>void markRead(item.id)}>Marcar como lida</button>}</div></li>)}</ul>}</section>}</div>;
+  return <div className="notifications" ref={container}>
+    <button type="button" className="header-icon-button" aria-label={`Notificações${unread?`, ${unread} não lidas`:""}`} title="Notificações" aria-expanded={open} aria-controls="notifications-panel" onClick={()=>setOpen(value=>!value)}>
+      <UiIcon name="bell" />{unread>0 && <span className="notification-count">{unread}</span>}
+    </button>
+    {open && <section className="notification-panel" id="notifications-panel" aria-label="Notificações">
+      <div className="notification-heading"><div><strong>Para você comparar</strong><span>Sugestões para sua próxima escolha</span></div><button type="button" className="header-icon-button" aria-label="Fechar notificações" onClick={()=>setOpen(false)}><UiIcon name="close" /></button></div>
+      {libraryError?<p className="notification-state" role="alert">Não foi possível carregar seus favoritos.</p>:loading || !ready && !pathname.startsWith("/admin")?<p className="notification-state" role="status">Carregando sugestões…</p>:!suggestions.length?<div className="notification-empty"><UiIcon name="bell" /><strong>Tudo em dia</strong><p>Visite produtos ou salve seus favoritos para encontrar novas comparações por aqui.</p></div>:<>
+        <ul className="notification-list">{suggestions.map(item=><li key={item.id}>
+          <div className="notification-item-heading"><span>Uma alternativa para comparar</span><button type="button" className="notification-dismiss" aria-label={`Marcar como lida: ${item.product.name}`} title="Marcar como lida" onClick={()=>markRead(item.id)}><UiIcon name="close" /></button></div>
+          <Link href={item.href} className="notification-comparison" onClick={()=>{setOpen(false);markRead(item.id);}}>
+            <strong title={item.product.name}>{item.product.name}</strong><span className="notification-versus">com</span><strong title={item.alternative.name}>{item.alternative.name}</strong>
+            <span className="notification-action">Ver comparação <UiIcon name="right" /></span>
+          </Link>
+        </li>)}</ul>
+        <div className="notification-footer"><span>{unread} {unread===1?"sugestão":"sugestões"}</span><button type="button" className="text-button" onClick={()=>suggestions.forEach(item=>markRead(item.id))}>Marcar todas como lidas</button></div>
+      </>}
+    </section>}
+  </div>;
 }

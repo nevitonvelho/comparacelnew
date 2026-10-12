@@ -51,7 +51,7 @@ test('categoria tem conteúdo inicial, páginas inválidas retornam 404 e conta 
   await expect.poll(() => page.evaluate(() => (window as Window & { dataLayer?: {event:string;page_path:string}[] }).dataLayer?.some(item => item.event === 'comparacel_page_view' && item.page_path === '/notebooks'))).toBe(true);
   await expect(page.locator('script[src*="gtm.js?id=GTM-PN53J4BW"]')).toHaveCount(1);
   expect(await page.evaluate(() => (window as Window & { dataLayer?: {event:string;page_path:string}[] }).dataLayer?.filter(item => item.event === 'comparacel_page_view' && item.page_path === '/notebooks').length)).toBe(1);
-  await page.getByRole('navigation').getByRole('link', { name: 'Início' }).click();
+  await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Início' }).click();
   await expect.poll(() => page.evaluate(() => (window as Window & { dataLayer?: {event:string;page_path:string}[] }).dataLayer?.some(item => item.event === 'comparacel_page_view' && item.page_path === '/'))).toBe(true);
   const invalid = await request.get('/produto/produto-inexistente', { headers: { 'User-Agent': 'facebookexternalhit/1.1' } });
   expect(invalid.status()).toBe(404);

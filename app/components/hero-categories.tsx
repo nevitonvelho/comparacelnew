@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useCatalog } from "./catalog-provider";
+import { hasActiveOffer } from "@/lib/product-offers";
 
 const categories = [
   { slug: "notebooks", name: "Notebooks" },
@@ -21,7 +22,7 @@ function CategoryPhoto({ url }: { url: string | null }) {
 export function HeroCategories() {
   const { products } = useCatalog();
   return <div className="hero-categories">{categories.map(category => {
-    const product = products.find(item => item.category === category.slug && item.imageUrl);
+    const product = products.find(item => item.category === category.slug && item.imageUrl && hasActiveOffer(item));
     return <div key={category.slug}><CategoryPhoto key={product?.imageUrl ?? category.slug} url={product?.imageUrl ?? null} /><strong>{category.name}</strong></div>;
   })}</div>;
 }

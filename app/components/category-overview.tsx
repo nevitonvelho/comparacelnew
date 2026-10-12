@@ -3,8 +3,10 @@ import { UiIcon } from "./icons";
 import Link from "next/link";
 import { ProductImage } from "./product-image";
 import { useCatalog } from "./catalog-provider";
+import { hasActiveOffer } from "@/lib/product-offers";
 export function CategoryOverview() {
-  const { products, categorySettings } = useCatalog();
+  const { products: catalogProducts, categorySettings } = useCatalog();
+  const products = catalogProducts.filter(hasActiveOffer);
   const categories = categorySettings.categories.filter(item => item.showOnHome && products.some(product => product.category === item.id)).slice(0, categorySettings.homeLimit);
   return <section className="category-overview"><div className="section-heading"><div><span className="eyebrow">O QUE VOCÊ QUER COMPARAR?</span><h2>Comece pela categoria.</h2></div><Link href="/catalogo" className="section-link">Explorar tudo <UiIcon name="right" /></Link></div><div className="category-grid">{categories.map(({id:slug, name, representativeProductId}) => {
     const items = products.filter(product => product.category === slug);

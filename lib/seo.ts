@@ -5,7 +5,7 @@ export const siteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://comp
 export const siteName = "Comparacel";
 export const absoluteUrl = (path: string) => new URL(path, siteUrl).href;
 export function pageMetadata(title: string, description: string, path: string, image?: string | null): Metadata {
-  const images = [{ url: image || absoluteUrl("/brand/comparacel.png"), alt: image ? title : siteName }];
+  const images = [{ url: image || absoluteUrl("/brand/comparacel-blue-teal.webp"), alt: image ? title : siteName }];
   return {
     title, description, alternates: { canonical: absoluteUrl(path) },
     openGraph: { type: "website", locale: "pt_BR", siteName, title: `${title} | ${siteName}`, description, url: absoluteUrl(path), images },

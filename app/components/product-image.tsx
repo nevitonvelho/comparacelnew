@@ -11,6 +11,8 @@ export function ProductImage({ name, url, large = false, sizes }: { name: string
       src={url}
       alt={name}
       fill
+      loading={large ? "eager" : "lazy"}
+      fetchPriority={large ? "high" : undefined}
       sizes={sizes ?? (large ? "(max-width: 520px) 80vw, 400px" : "(max-width: 520px) 80vw, (max-width: 1200px) 40vw, 500px")}
       style={{ objectFit: "contain" }}
       onError={() => setFailedUrl(url)}

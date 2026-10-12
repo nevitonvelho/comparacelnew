@@ -1,6 +1,8 @@
 "use client";
 import { UiIcon } from "./icons";
+import { AffiliateDisclosure } from "./affiliate-link";
 import Image from "next/image";
+import Form from "next/form";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCatalog } from "./catalog-provider";
@@ -9,13 +11,13 @@ import { AuthControl } from "./user-actions";
 import { comparisonSlug } from "@/lib/product-model";
 
 export function Logo() {
-  return <Link href="/" className="logo" aria-label="ComparaCel — início"><Image src="/brand/comparacel.png" alt="ComparaCel" fill sizes="250px" style={{ objectFit: "cover" }} preload /></Link>;
+  return <Link href="/" className="logo" aria-label="ComparaCel — início"><Image src="/brand/comparacel-blue-teal.webp" alt="ComparaCel" fill sizes="250px" style={{ objectFit: "contain" }} preload /></Link>;
 }
 export function Header() {
   const pathname = usePathname();
   const { selected } = useCatalog();
   if (pathname.startsWith("/admin")) return <header className="site-header"><div className="header admin-site-header"><Logo /><Link href="/" className="section-link">Voltar ao site <UiIcon name="right" /></Link><AuthControl /></div></header>;
-  return <header className="site-header"><div className="header"><Logo /><nav aria-label="Navegação principal">{[["/", "Início"], ["/catalogo", "Categorias"], ["/comunidade", "Mais comparados"], ["/comparar", "Comparar"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href || (href !== "/" && pathname.startsWith(href + "/")) ? "page" : undefined}>{label}{href === "/comparar" && selected.length > 0 && <span className="nav-count">{selected.length}</span>}</Link>)}</nav><AuthControl /></div></header>;
+  return <header className="site-header"><div className="header header-with-search"><Logo /><Form action="/catalogo" role="search" aria-label="Buscar no catálogo" className="header-search"><label className="sr-only" htmlFor="header-product-search">Buscar produtos ou marcas</label><input id="header-product-search" type="search" name="q" placeholder="Buscar produtos ou marcas…" maxLength={200} /><button type="submit" aria-label="Buscar"><UiIcon name="search" /></button></Form><nav aria-label="Navegação principal">{[["/catalogo", "Categorias"], ["/comunidade", "Mais comparados"], ["/comparar", "Comparar"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href || (href !== "/" && pathname.startsWith(href + "/")) ? "page" : undefined}>{label}{href === "/comparar" && selected.length > 0 && <span className="nav-count">{selected.length}</span>}</Link>)}</nav><AuthControl /></div></header>;
 }
 export function Footer() {
   const pathname = usePathname();
@@ -29,6 +31,7 @@ export function Footer() {
       <nav className="footer-nav" aria-label="Explore o Comparacel"><h3>Explore</h3><Link href="/">Início</Link><Link href="/catalogo">Todos os produtos</Link><Link href="/comparar">Comparar produtos</Link><Link href="/comunidade">Mais comparados</Link><Link href="/minha-conta">Minha conta e favoritos</Link></nav>
       <nav className="footer-nav" aria-label="Categorias no rodapé"><h3>Categorias</h3>{categories.map(category=><Link key={category.id} href={`/${category.id}`}>{category.name}</Link>)}<Link href="/catalogo" className="footer-all-categories">Ver todas as categorias <UiIcon name="right" /></Link></nav>
     </div>
+    <AffiliateDisclosure />
     <div className="footer-bottom"><small>© {new Date().getFullYear()} Comparacel</small><p>Preços e disponibilidade podem mudar. Confirme as condições na loja antes de comprar.</p><a href="#conteudo" className="footer-back-top">Voltar ao conteúdo ↑</a></div>
   </div></footer>;
 }
