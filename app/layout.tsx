@@ -27,7 +27,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const categorySettings = await readCategorySettings(getAdminDatabase());
   // Extensions may insert attributes on body before React hydrates it.
   // Suppression is limited to this element; child components retain diagnostics.
-  return <html lang="pt-BR"><body suppressHydrationWarning>
+  return <html lang="pt-BR"><head>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3752361675797235" crossOrigin="anonymous" />
+  </head><body suppressHydrationWarning>
     {/^GTM-[A-Z0-9]+$/.test(gtmId) && <noscript><iframe src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`} height="0" width="0" style={{ display: "none", visibility: "hidden" }} title="Google Tag Manager" /></noscript>}
     <Suspense fallback={null}><GoogleTagManager /></Suspense>
     <JsonLd data={{ "@context": "https://schema.org", "@type": "Organization", name: siteName, url: siteUrl, logo: absoluteUrl("/brand/comparacel.png") }} />
