@@ -48,9 +48,29 @@ export function extensionProductSummary(product: AdminProduct) {
   return {id: product.id, name: product.name, category: product.category, offers: product.offers.map(offer => ({storeId: offer.storeId, externalId: offer.externalId, url: offer.url, price: offer.price})), editPath: `/admin?produto=${encodeURIComponent(product.id)}`};
 }
 
+export async function lookupExtensionListing(db: Firestore, source: ImportSource, entries: {pageUrl: string; name: string}[]) {
+  const identities = entries.map(entry => {
+    // Sponsored search cards may expose only a tracking URL. Match by title
+    // in that case, without claiming that the advertisement is already linked.
+    const host = new URL(entry.pageUrl).hostname;
+    const allowed = source === "amazon" ? /(^|\.)amazon\.com\.br$/ : /(^|\.)mercadolivre\.com\.br$/;
+    if (!allowed.test(host)) throw new AdminError("Página inválida.");
+    try { return extensionProductIdentity(entry.pageUrl, source); } catch { return null; }
+  });
+  const snapshot = await db.collection("products").get();
+  const products = snapshot.docs.map(doc => adminProductFromData(doc.id, doc.data()));
+  return entries.map((entry, index) => {
+    const identity = identities[index];
+    const exact = identity ? products.filter(product => product.offers.some(offer => offerBelongsToSource(offer, source) && offerMatchesIdentity(offer, source, identity))) : [];
+    const suggestions = exact.length ? [] : products.map(product => ({product, score: extensionProductSimilarity(entry.name, product.name)}))
+      .filter(match => match.score > 0).sort((a, b) => b.score - a.score).slice(0, 3).map(match => extensionProductSummary(match.product));
+    return {pageUrl: entry.pageUrl, conflict: exact.length > 1, product: exact.length === 1 ? extensionProductSummary(exact[0]) : null, suggestions};
+  });
+}
+
 function productNameTokens(value: string) {
-  const normalized=slugify(value.replace(/(\d+)\s*["″”]/g, "$1pol").replace(/micro[ -]?ondas/gi,"microondas")).replaceAll("-", " ")
-    .replace(/\b(\d+)\s+(gb|tb|mb|kg|l|litros|v|volts|w|watts|pol|polegadas)\b/g, "$1$2");
+  const normalized=slugify(value.replace(/(\d{1,3})\.(\d{3})(?=\s*btus?)/gi,"$1$2").replace(/btus/gi,"btu").replace(/(\d+)\s*["″”]/g, "$1pol").replace(/micro[ -]?ondas/gi,"microondas")).replaceAll("-", " ")
+    .replace(/\b(\d+)\s+(gb|tb|mb|kg|l|litros|v|volts|w|watts|btu|pol|polegadas)\b/g, "$1$2");
   const ignored=new Set(["de","da","do","das","dos","com","para","e","a","o","um","uma","produto","novo","nova","amazon","mercado","livre"]);
   return [...new Set(normalized.split(" ").filter(word=>word.length>1 && !ignored.has(word)).map(word=>word.replace(/^un(\d{2})([a-z]\d{4}[a-z])[a-z0-9]*$/, "$1pol $2").replace(/litros$/, "l").replace(/volts$/, "v").replace(/watts$/, "w").replace(/polegadas$/, "pol")).flatMap(word=>word.split(" ")))];
 }
@@ -59,11 +79,11 @@ export function extensionProductSimilarity(pageName: string, productName: string
   if(page.length<2 || product.length<2)return 0;
   const shared=page.filter(word=>product.includes(word));
   // Compare each attribute separately; missing voltage is not a conflict.
-  const units=/^\d+(?:gb|tb|mb|kg|l|v|w|pol)$/;
+  const units=/^\d+(?:gb|tb|mb|kg|l|v|w|btu|pol)$/;
   const models=(words:string[])=>words.filter(word=>/[a-z]/.test(word) && /\d/.test(word) && !units.test(word) && !/^(?:4k|8k|5g|4g|3g)$/.test(word));
   const pageModels=models(page);const productModels=models(product);
   if(pageModels.length && productModels.length && !pageModels.some(model=>productModels.includes(model)))return 0;
-  for(const unit of ["gb","tb","mb","kg","l","v","w","pol"]) {
+  for(const unit of ["gb","tb","mb","kg","l","v","w","btu","pol"]) {
     const attribute=new RegExp(`^\\d+${unit}$`);
     const pageValues=page.filter(word=>attribute.test(word));const productValues=product.filter(word=>attribute.test(word));
     if(pageValues.length && productValues.length && !pageValues.some(value=>productValues.includes(value)))return 0;

@@ -13,6 +13,7 @@ import { invalidateServerCatalog } from "@/lib/server-catalog";
 import { adminProductFromData } from "@/lib/admin-store";
 import { extensionPriceQueue, validateExtensionBatchOffer, extensionProductIdentity, offerBelongsToSource, offerMatchesIdentity, extensionProductSummary, lookupExtensionProduct, suggestExtensionProducts, searchExtensionProducts } from "@/lib/extension-products";
 import { revalidatePath } from "next/cache";
+import { lookupExtensionListing } from "@/lib/extension-products";
 export const runtime="nodejs";
 export const maxDuration=60;
 export async function OPTIONS(request:NextRequest) {
@@ -54,6 +55,13 @@ export async function POST(request:NextRequest) {
     headers=extensionHeaders(request);
     const actor=await requireExtension(request);
     const input=await readAdminJson(request);
+    if(input.mode === "lookup-listing") {
+      if(!["amazon", "mercadolivre"].includes(input.source) || !Array.isArray(input.entries) || !input.entries.length || input.entries.length > 60)throw new AdminError("Lista inválida.");
+      for(const entry of input.entries) {
+        if(!entry || typeof entry.pageUrl !== "string" || entry.pageUrl.length > 4500 || typeof entry.name !== "string" || !entry.name.trim() || entry.name.length > 300)throw new AdminError("Produto da lista inválido.");
+      }
+      return NextResponse.json({results: await lookupExtensionListing(getAdminDatabase(), input.source, input.entries)}, {headers});
+    }
     const mode=(input.mode ?? "import") as ExtensionUpdateMode;
     if(!["import","price","full","offer","unavailable"].includes(mode))throw new AdminError("Operação inválida.");
     const capture=validateProductCapture(input.capture,Date.now(),mode==="unavailable");

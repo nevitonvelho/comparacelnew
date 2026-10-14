@@ -60,7 +60,7 @@ test('Extension keys are hashed, replaceable, revocable and checked against curr
 const productStubUrl=url('export const adminProductFromData=(id,data)=>({...data,id});');
 const freshnessUrl=url(compile(await readFile("lib/admin-price-freshness.ts","utf8")));
 const extensionProductsUrl=url(compile(await readFile('lib/extension-products.ts','utf8')).replace('"./admin-model"',JSON.stringify(adminUrl)).replace('"./admin-import-model"',JSON.stringify(modelUrl)).replace('"./admin-store"',JSON.stringify(productStubUrl)).replace('"./admin-price-freshness"',JSON.stringify(freshnessUrl)));
-const {extensionPriceQueue,validateExtensionBatchOffer,extensionProductIdentity,offerMatchesIdentity,lookupExtensionProduct,searchExtensionProducts,extensionProductSimilarity,suggestExtensionProducts}=await import(extensionProductsUrl);
+const {lookupExtensionListing,extensionPriceQueue,validateExtensionBatchOffer,extensionProductIdentity,offerMatchesIdentity,lookupExtensionProduct,searchExtensionProducts,extensionProductSimilarity,suggestExtensionProducts}=await import(extensionProductsUrl);
 function productDatabase(records,mappings={}) {
   const snapshot=(id,data)=>({id,exists:!!data,data:()=>data});
   return {doc:path=>({get:async()=>{const [collection,id]=path.split('/');return snapshot(id,collection==='products'?records[id]:mappings[id]);}}),collection:()=>({get:async()=>({docs:Object.entries(records).map(([id,data])=>snapshot(id,data))})})};
@@ -306,4 +306,25 @@ test('batch saves only the exact source, advertisement, store and unchanged affi
   assert.throws(()=>validateExtensionBatchOffer(product,'amazon','B099999999',input));
   assert.throws(()=>validateExtensionBatchOffer(product,'mercadolivre',offer.externalId,input));
   assert.throws(()=>validateExtensionBatchOffer(null,'amazon',offer.externalId,input));
+});
+
+test('listing lookup distinguishes exact ads, cross-store suggestions, absence and conflicts',async()=>{
+  const existing={name:'Ar Condicionado Midea Inverter 9000 BTU 220V',category:'ar-condicionado',offers:[{storeId:'amazon',url:'https://amzn.to/owner',externalId:'B012345678'}]};
+  const db=productDatabase({midea:existing});
+  const [exact]=await lookupExtensionListing(db,'amazon',[{pageUrl:'https://www.amazon.com.br/dp/B012345678',name:'Título diferente'}]);
+  assert.equal(exact.product.id,'midea');assert.deepEqual(exact.suggestions,[]);
+  const [suggestion,absent]=await lookupExtensionListing(db,'mercadolivre',[
+    {pageUrl:'https://www.mercadolivre.com.br/p/MLB12345',name:'Ar Condicionado Midea Inverter 9.000 BTUs 220V'},
+    {pageUrl:'https://www.mercadolivre.com.br/p/MLB54321',name:'Ar Condicionado Midea Inverter 12000 BTU 220V'}
+  ]);
+  assert.equal(suggestion.product,null);assert.equal(suggestion.suggestions[0].id,'midea');assert.deepEqual(absent.suggestions,[]);
+  const [conflict]=await lookupExtensionListing(productDatabase({one:existing,two:existing}),'amazon',[{pageUrl:'https://www.amazon.com.br/dp/B012345678',name:existing.name}]);
+  assert.equal(conflict.conflict,true);assert.equal(conflict.product,null);
+  await assert.rejects(lookupExtensionListing(db,'amazon',[{pageUrl:'https://evil.example/dp/B012345678',name:'Invalid'}]));
+});
+
+test('sponsored tracking URLs provide suggestions without claiming an exact match',async()=>{
+  const db=productDatabase({midea:{name:'Ar Condicionado Midea Inverter 9000 BTU 220V',category:'ar-condicionado',offers:[{storeId:'amazon',url:'https://amzn.to/owner',externalId:'B012345678'}]}});
+  const [result]=await lookupExtensionListing(db,'mercadolivre',[{pageUrl:'https://click1.mercadolivre.com.br/mclics/clicks?tracking=123',name:'Ar Condicionado Midea Inverter 9000 BTU 220V'}]);
+  assert.equal(result.product,null);assert.equal(result.suggestions[0].id,'midea');
 });

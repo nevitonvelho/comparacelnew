@@ -103,3 +103,15 @@ A página tem até 20 segundos para carregar. Depois de carregada, o lote tenta 
 ### Todas as ofertas (1.2.2)
 
 A fila inclui todas as ofertas identificadas da Amazon e Mercado Livre, independentemente da última conferência. Não limita a quantidade de produtos; mantém o limite de gravações por hora da API. Para repetir um lote concluído ou expandir um lote antigo, clique em **Carregar todas as ofertas**.
+
+## Marcações na busca (1.3.0)
+
+Com a extensão conectada, as buscas da Amazon Brasil e do Mercado Livre mostram uma marcação em cada anúncio identificado: **anúncio já cadastrado**, **possível produto cadastrado** ou **nenhum correspondente encontrado**. A marcação lista as lojas da ficha e indica quando é possível adicionar a loja atual. Sugestões por nome não confirmam identidade: confira modelo, capacidade e versão. Nenhum correspondente encontrado não garante que o produto esteja ausente da base.
+
+Clique em **Abrir anúncio e usar extensão**, abra o popup, confira a ficha sugerida, cole o afiliado da loja atual e use **Adicionar / atualizar oferta e link de afiliado**. As marcações apenas consultam a base; salvar continua sendo uma ação explícita no popup. Falhas de conexão aparecem como consulta indisponível.
+
+Após instalar esta versão, recarregue a extensão e as abas de busca. É necessário atualizar também o servidor Comparacel para aceitar a consulta de anúncios em lote. O acesso aos domínios das lojas permite mostrar as marcações automaticamente; a chave de conexão permanece no armazenamento da extensão e não é enviada ao código da página.
+
+### Correção 1.3.1
+
+Anúncios patrocinados com links de rastreamento também são consultados pelo título, como possíveis correspondentes. O indicador no canto inferior mostra o resultado da consulta e permite verificar novamente. Abrir o popup em uma busca ativa as marcações também na aba atual.

@@ -1,0 +1,7 @@
+.comparacel-listing { margin: 8px 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #0f172a; font: 13px/1.45 Arial, sans-serif; }
+.comparacel-listing[data-state="exact"] { background: #ecfdf5; border-color: #34d399; }
+.comparacel-listing[data-state="suggestion"] { background: #fffbeb; border-color: #fbbf24; }
+.comparacel-listing strong, .comparacel-listing span { display: block; }
+.comparacel-listing a { display: inline-block; margin: 5px 8px 0 0; color: #075985; text-decoration: underline; }
+.comparacel-search-status { position: fixed; bottom: 16px; right: 16px; z-index: 2147483647; max-width: 340px; box-shadow: 0 4px 16px #0003; }
+.comparacel-search-status button { margin-top: 8px; padding: 6px 10px; cursor: pointer; }
