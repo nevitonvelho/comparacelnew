@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { collection, doc, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { getDatabase } from "@/lib/firebase/client";
+import { collection, doc, limit, onSnapshot, orderBy, query, where } from "@/lib/laravel-client-data";
+import { getDatabase } from "@/lib/laravel-client-data";
 import { googlePhoto, type PublicProfile, type SocialPost } from "@/lib/social";
 export function usePublicProfile(uid: string | undefined) {
   const [state,setState]=useState<{uid:string;profile:PublicProfile|null;error:boolean}|null>(null);

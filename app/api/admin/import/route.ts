@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getDownloadURL } from "firebase-admin/storage";
+import { getDownloadURL } from "@/lib/laravel-storage";
 import { NextRequest, NextResponse } from "next/server";
 import { adminFailure, adminHeaders, readAdminJson, requireAdministrator } from "@/lib/admin-api";
 import { AdminError } from "@/lib/admin-model";

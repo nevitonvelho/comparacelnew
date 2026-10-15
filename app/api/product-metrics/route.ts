@@ -1,7 +1,7 @@
 import { NextRequest,NextResponse } from "next/server";
 import { getAdminDatabase } from "@/lib/firebase/admin";
 import { pageIdentity } from "@/lib/engagement-model";
-import { readProductMetrics } from "@/lib/product-metrics-store";
+import { getServerProductMetrics } from "@/lib/server-metrics";
 export const runtime="nodejs";
 const headers={"Cache-Control":"no-store"};
 export async function POST(request:NextRequest) {
@@ -14,9 +14,10 @@ export async function POST(request:NextRequest) {
     if(!Array.isArray(body?.ids)||!body.ids.length||body.ids.length>24||body.ids.some((id:unknown)=>!pageIdentity("product",[id])))return NextResponse.json({error:"Produtos inválidos"},{status:400,headers});
     const ids=[...new Set(body.ids)] as string[];
     const db=getAdminDatabase();
-    const products=await db.getAll(...ids.map(id=>db.doc(`products/${id}`)));
+    // Keep activity validation fresh; metrics cache must not expose inactive products.
+    const products=await db.getAll(...ids.map(id=>db.doc(`products/${id}`)), {fieldMask:["isActive"]});
     const active=products.filter(product=>product.data()?.isActive===true);
-    const results=await Promise.all(active.map(async product=>[product.id,await readProductMetrics(db,product.id)] as const));
+    const results=await Promise.all(active.map(async product=>[product.id,await getServerProductMetrics(product.id)] as const));
     return NextResponse.json({products:Object.fromEntries(results)},{headers});
   }catch(error){
     console.error("Falha nas métricas de produto",error instanceof Error?error.message:"erro desconhecido");

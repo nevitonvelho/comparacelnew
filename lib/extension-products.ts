@@ -19,23 +19,36 @@ export function offerBelongsToSource(offer: AdminProduct["offers"][number], sour
     return source === "amazon" ? host === "amzn.to" || host === "amazon.com.br" || host.endsWith(".amazon.com.br") : host === "meli.la" || host === "mercadolivre.com.br" || host.endsWith(".mercadolivre.com.br") || host === "mercadolivre.com" || host.endsWith(".mercadolivre.com");
   } catch { return false; }
 }
-export async function lookupExtensionProduct(db: Firestore, source: ImportSource, externalId: string) {
+async function lookupExtensionMatch(db: Firestore, source: ImportSource, externalId: string) {
   const mapping = await db.doc(`adminImportSources/${source}-${externalId}`).get();
   if (mapping.exists) {
     const doc = await db.doc(`products/${mapping.data()!.productId}`).get();
-    if (doc.exists) return adminProductFromData(doc.id, doc.data()!);
+    if (doc.exists) return {product:adminProductFromData(doc.id, doc.data()!),candidates:[]};
   }
-  const products = await db.collection("products").get();
-  const matches = products.docs.map(doc => adminProductFromData(doc.id, doc.data())).filter(product => product.offers.some(offer => offerMatchesIdentity(offer, source, externalId)));
+  const candidates = await readExtensionCandidates(db);
+  const matches = candidates.filter(product => product.offers.some(offer => offerMatchesIdentity(offer, source, externalId)));
   if (matches.length > 1) throw new AdminError("Este anúncio aparece em mais de uma ficha. Corrija as ofertas no painel.", 409);
-  return matches[0] ?? null;
+  if (!matches.length) return {product:null,candidates};
+  const doc = await db.doc(`products/${matches[0].id}`).get();
+  return {product:doc.exists?adminProductFromData(doc.id,doc.data()!):null,candidates};
+}
+export async function lookupExtensionProduct(db: Firestore, source: ImportSource, externalId: string) {
+  return (await lookupExtensionMatch(db,source,externalId)).product;
+}
+async function readExtensionCandidates(db: Firestore) {
+  const snapshot=await db.collection("products").select("name","categorySlug","offers").get();
+  return snapshot.docs.map(doc=>adminProductFromData(doc.id,doc.data()));
+}
+export async function lookupExtensionProductWithSuggestions(db: Firestore, source: ImportSource, externalId: string, pageName: string) {
+  const {product,candidates}=await lookupExtensionMatch(db,source,externalId);
+  return {product,suggestions:product||!pageName?[]:suggestCandidates(candidates,pageName)};
 }
 export async function searchExtensionProducts(db: Firestore, query: string) {
   const normalized = slugify(query).replaceAll("-", " ");
   if (normalized.length < 2) return [];
   const words = normalized.split(" ");
-  const products = await db.collection("products").get();
-  return products.docs.map(doc => adminProductFromData(doc.id, doc.data())).map(product => {
+  const products = await readExtensionCandidates(db);
+  return products.map(product => {
     const text = slugify(`${product.name} ${product.id}`).replaceAll("-", " ");
     const exact=slugify(query)===slugify(product.name) || slugify(query)===product.id;
     const allWords=words.every(word=>text.includes(word));
@@ -57,8 +70,7 @@ export async function lookupExtensionListing(db: Firestore, source: ImportSource
     if (!allowed.test(host)) throw new AdminError("Página inválida.");
     try { return extensionProductIdentity(entry.pageUrl, source); } catch { return null; }
   });
-  const snapshot = await db.collection("products").get();
-  const products = snapshot.docs.map(doc => adminProductFromData(doc.id, doc.data()));
+  const products = await readExtensionCandidates(db);
   return entries.map((entry, index) => {
     const identity = identities[index];
     const exact = identity ? products.filter(product => product.offers.some(offer => offerBelongsToSource(offer, source) && offerMatchesIdentity(offer, source, identity))) : [];
@@ -99,8 +111,10 @@ export function extensionProductSimilarity(pageName: string, productName: string
   return coverage>=0.65 && overlap>=0.5?overlap:0;
 }
 export async function suggestExtensionProducts(db: Firestore, pageName: string) {
-  const products=await db.collection("products").get();
-  return products.docs.map(doc=>adminProductFromData(doc.id,doc.data()))
+  return suggestCandidates(await readExtensionCandidates(db),pageName);
+}
+function suggestCandidates(products: AdminProduct[], pageName: string) {
+  return products
     .map(product=>({product,score:extensionProductSimilarity(pageName,product.name)}))
     .filter(match=>match.score>0).sort((a,b)=>b.score-a.score || a.product.name.localeCompare(b.product.name))
     .slice(0,5).map(match=>extensionProductSummary(match.product));

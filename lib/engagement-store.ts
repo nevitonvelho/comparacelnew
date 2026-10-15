@@ -7,7 +7,7 @@ export async function recordVisit(db:Firestore,identity:Identity,visitorHash:str
   const reference=db.collection("pageStats").doc(identity.key);
   const receipt=reference.collection("visitors").doc(visitorHash);
   return db.runTransaction(async transaction=>{
-    const products=await transaction.getAll(...identity.ids.map(id=>db.collection("products").doc(id)));
+    const products=await transaction.getAll(...identity.ids.map(id=>db.collection("products").doc(id)), {fieldMask:["isActive","categorySlug"]});
     if(products.some(product=>!product.exists||product.data()?.isActive!==true)
       || (products.length===2&&products[0].data()?.categorySlug!==products[1].data()?.categorySlug)) return false;
     const [stats,last]=await transaction.getAll(reference,receipt);

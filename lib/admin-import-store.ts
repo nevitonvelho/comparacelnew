@@ -14,11 +14,14 @@ export async function findImportProduct(db: Firestore, source: ImportSource, col
   const mapping = await db.doc(`adminImportSources/${source}-${collected.externalId}`).get();
   if (mapping.exists) { const product = await db.doc(`products/${mapping.data()!.productId}`).get(); if (product.exists) return adminProductFromData(product.id, product.data()!); }
   // Match migrated records by the source ID first; title matching is only a fallback.
-  const products = await db.collection("products").get();
+  const products = await db.collection("products").select("name", "categorySlug", "offers").get();
   const bySource = products.docs.find(doc => (doc.data().offers ?? []).some((offer: { external_id?: string; url?: string }) => offer.external_id === collected.externalId || (source === "amazon" && offer.url?.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i)?.[1].toUpperCase() === collected.externalId)));
   const byName = products.docs.filter(doc => doc.data().categorySlug === category && slugify(doc.data().name ?? "") === slugify(collected.name));
   const match = bySource ?? (byName.length === 1 ? byName[0] : undefined);
-  return match ? adminProductFromData(match.id, match.data()) : null;
+  if (!match) return null;
+  // Persistence needs the complete current revision, including manual editorial fields.
+  const product = await db.doc(`products/${match.id}`).get();
+  return product.exists ? adminProductFromData(product.id, product.data()!) : null;
 }
 export type ExtensionUpdateMode = "import" | "price" | "full" | "offer" | "unavailable";
 export function mergeImportedProduct(collected: CollectedProduct, existing: AdminProduct | null, category: string, brandId: string, storeId: string, imageUrl: string, mode: ExtensionUpdateMode = "import"): AdminProduct {

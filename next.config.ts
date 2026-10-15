@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" }, {
+    remotePatterns: [{ protocol: "https", hostname: "api.comparacel.com.br", pathname: "/api/v1/media/**" }, ...(process.env.NODE_ENV !== "production" ? [{ protocol: "http" as const, hostname: "127.0.0.1", port: "8000", pathname: "/api/v1/media/**" }, { protocol: "http" as const, hostname: "localhost", port: "8000", pathname: "/api/v1/media/**" }] : []), { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" }, {
       protocol: "https",
       hostname: "firebasestorage.googleapis.com",
       pathname: "/v0/b/comparacel.firebasestorage.app/o/**",

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getDownloadURL } from "firebase-admin/storage";
+import { getDownloadURL } from "@/lib/laravel-storage";
 import { NextRequest, NextResponse } from "next/server";
 import { extensionHeaders, requireExtension } from "@/lib/extension-auth";
 import { AdminError } from "@/lib/admin-model";
@@ -11,7 +11,7 @@ import { fetchImportResource } from "@/lib/admin-import-fetch";
 import { inspectAdminImage } from "@/lib/admin-image";
 import { invalidateServerCatalog } from "@/lib/server-catalog";
 import { adminProductFromData } from "@/lib/admin-store";
-import { extensionPriceQueue, validateExtensionBatchOffer, extensionProductIdentity, offerBelongsToSource, offerMatchesIdentity, extensionProductSummary, lookupExtensionProduct, suggestExtensionProducts, searchExtensionProducts } from "@/lib/extension-products";
+import { extensionPriceQueue, validateExtensionBatchOffer, extensionProductIdentity, offerBelongsToSource, offerMatchesIdentity, extensionProductSummary, lookupExtensionProduct, lookupExtensionProductWithSuggestions, searchExtensionProducts } from "@/lib/extension-products";
 import { revalidatePath } from "next/cache";
 import { lookupExtensionListing } from "@/lib/extension-products";
 export const runtime="nodejs";
@@ -26,17 +26,16 @@ export async function GET(request:NextRequest) {
     headers=extensionHeaders(request);await requireExtension(request);
     const db=getAdminDatabase();const params=request.nextUrl.searchParams;
     if(params.has("queue")) {
-      const products=await db.collection("products").get();
+      const products=await db.collection("products").select("name","offers").get();
       return NextResponse.json({queue:extensionPriceQueue(products.docs.map(doc=>adminProductFromData(doc.id,doc.data())))},{headers});
     }
     if(params.has("pageUrl")) {
       const source=params.get("source");const pageUrl=params.get("pageUrl") ?? "";
       if(!["amazon","mercadolivre"].includes(source ?? "") || pageUrl.length>4500)throw new AdminError("Página inválida.");
       const identity=extensionProductIdentity(pageUrl,source as "amazon"|"mercadolivre");
-      const product=await lookupExtensionProduct(db,source as "amazon"|"mercadolivre",identity);
       const name=params.get("name") ?? "";
       if(name.length>300)throw new AdminError("Nome muito longo.");
-      const suggestions=product || !name?[]:await suggestExtensionProducts(db,name);
+      const {product,suggestions}=await lookupExtensionProductWithSuggestions(db,source as "amazon"|"mercadolivre",identity,name);
       return NextResponse.json({product:product?extensionProductSummary(product):null,suggestions,automaticSuggestions:true},{headers});
     }
     if(params.has("q")) {

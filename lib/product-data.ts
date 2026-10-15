@@ -1,4 +1,5 @@
 import type { Product } from "./product-model";
+export const PUBLIC_PRODUCT_FIELDS = ["name", "description", "meta_title", "meta_description", "brandName", "categorySlug", "overallScore", "bestPriceCents", "imageUrl", "label", "specs", "offers", "highlights", "updatedAt", "updated_at", "isActive"];
 function priceDate(value: unknown): string | undefined {
   const stamp = value as { toDate?: () => Date; seconds?: number; _seconds?: number } | null;
   const raw = typeof value === "string" ? value : stamp?.toDate ? stamp.toDate().toISOString() : typeof (stamp?.seconds ?? stamp?._seconds) === "number" ? new Date((stamp!.seconds ?? stamp!._seconds!) * 1000).toISOString() : "";
@@ -20,7 +21,7 @@ export function productFromData(id: string, data: Record<string, unknown>): Prod
       updatedAt: priceDate(data.updatedAt ?? data.updated_at), id, description: text(data.description, ""), metaTitle: text(data.meta_title, ""), metaDescription: text(data.meta_description, ""), name: text(data.name), brand: text(data.brandName), category: text(data.categorySlug, "outros"),
       score: typeof data.overallScore === "number" ? data.overallScore.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "—",
       price: price === null ? null : price / 100,
-      imageUrl: typeof data.imageUrl === "string" && data.imageUrl.startsWith("https://firebasestorage.googleapis.com/v0/b/comparacel.firebasestorage.app/o/") ? data.imageUrl : null,
+      imageUrl: typeof data.imageUrl === "string" && (data.imageUrl.startsWith("https://firebasestorage.googleapis.com/v0/b/comparacel.firebasestorage.app/o/") || /^https:\/\/api\.comparacel\.com\.br\/api\/v1\/media\/[a-f0-9]{64}$/.test(data.imageUrl) || process.env.NODE_ENV !== "production" && /^http:\/\/(127\.0\.0\.1|localhost):8000\/api\/v1\/media\/[a-f0-9]{64}$/.test(data.imageUrl)) ? data.imageUrl : null,
       label: text(data.label, "Ficha técnica"),
       specs: (Array.isArray(data.specs) ? data.specs : []).map((spec: Record<string, unknown>) => ({
         key: `${text(spec.group, "Especificações")}:${text(spec.keySlug)}`, slug: text(spec.keySlug), name: text(spec.name), group: text(spec.group, "Especificações"), order: number(spec.order) ?? 0,

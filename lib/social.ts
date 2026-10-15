@@ -1,5 +1,5 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { getDatabase } from "./firebase/client";
+import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp, setDoc } from "@/lib/laravel-client-data";
+import { getDatabase } from "./laravel-client-data";
 import type { Product } from "./product-model";
 
 export type PublicProfile = { uid: string; displayName: string; bio: string; photoURL: string | null };

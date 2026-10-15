@@ -1,8 +1,8 @@
 "use client";
 import { usePathname } from "next/navigation";
 import { createContext,useContext,useEffect,useState,type ReactNode } from "react";
-import { collection,onSnapshot } from "firebase/firestore";
-import { getDatabase } from "@/lib/firebase/client";
+import { collection,onSnapshot } from "@/lib/laravel-client-data";
+import { getDatabase } from "@/lib/laravel-client-data";
 import { pageIdentity,type PageKind } from "@/lib/engagement-model";
 import { type Reaction,validReaction } from "@/lib/reaction-model";
 import { useAuth } from "./auth-provider";
@@ -36,6 +36,8 @@ export function ReactionProvider({children}:{children:ReactNode}) {
       const response=await fetch("/api/reactions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({kind,productIds:identity.ids,reaction:value})});
       const result=await response.json();
       if(!response.ok)throw new Error(result.error??"Não foi possível registrar a reação.");
+      window.dispatchEvent(new Event("comparacel-data-change"));
+      window.dispatchEvent(new Event("comparacel-metrics-change"));
       return result.reaction as Reaction|null;
     }finally{setBusy(null);}
   }

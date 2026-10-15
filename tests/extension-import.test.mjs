@@ -60,11 +60,28 @@ test('Extension keys are hashed, replaceable, revocable and checked against curr
 const productStubUrl=url('export const adminProductFromData=(id,data)=>({...data,id});');
 const freshnessUrl=url(compile(await readFile("lib/admin-price-freshness.ts","utf8")));
 const extensionProductsUrl=url(compile(await readFile('lib/extension-products.ts','utf8')).replace('"./admin-model"',JSON.stringify(adminUrl)).replace('"./admin-import-model"',JSON.stringify(modelUrl)).replace('"./admin-store"',JSON.stringify(productStubUrl)).replace('"./admin-price-freshness"',JSON.stringify(freshnessUrl)));
-const {lookupExtensionListing,extensionPriceQueue,validateExtensionBatchOffer,extensionProductIdentity,offerMatchesIdentity,lookupExtensionProduct,searchExtensionProducts,extensionProductSimilarity,suggestExtensionProducts}=await import(extensionProductsUrl);
+const {lookupExtensionListing,extensionPriceQueue,validateExtensionBatchOffer,extensionProductIdentity,offerMatchesIdentity,lookupExtensionProduct,lookupExtensionProductWithSuggestions,searchExtensionProducts,extensionProductSimilarity,suggestExtensionProducts}=await import(extensionProductsUrl);
 function productDatabase(records,mappings={}) {
   const snapshot=(id,data)=>({id,exists:!!data,data:()=>data});
-  return {doc:path=>({get:async()=>{const [collection,id]=path.split('/');return snapshot(id,collection==='products'?records[id]:mappings[id]);}}),collection:()=>({get:async()=>({docs:Object.entries(records).map(([id,data])=>snapshot(id,data))})})};
+  const db={scans:0,doc:path=>({get:async()=>{const [collection,id]=path.split('/');return snapshot(id,collection==='products'?records[id]:mappings[id]);}}),collection:()=>({select:()=>({get:async()=>{db.scans++;return {docs:Object.entries(records).map(([id,data])=>snapshot(id,data))};}})})};
+  return db;
 }
+test('unknown extension announcements reuse the lookup scan for suggestions',async()=>{
+  const db=productDatabase({phone:{name:'Samsung Galaxy A55 128 GB',offers:[]}});
+  const result=await lookupExtensionProductWithSuggestions(db,'amazon','B099999999','Samsung Galaxy A55 128 GB');
+  assert.equal(result.product,null);
+  assert.equal(result.suggestions[0].id,'phone');
+  assert.equal(db.scans,1);
+});
+test('known mappings need no catalog scan and return complete editorial data',async()=>{
+  const product={name:'Phone',offers:[],description:'Manual description',specs:[{value:'manual'}],metaTitle:'Manual SEO'};
+  const db=productDatabase({phone:product},{'amazon-B012345678':{productId:'phone'}});
+  const result=await lookupExtensionProductWithSuggestions(db,'amazon','B012345678','Phone');
+  assert.equal(db.scans,0);
+  assert.deepEqual(result.suggestions,[]);
+  assert.equal(result.product.metaTitle,'Manual SEO');
+  assert.deepEqual(result.product.specs,product.specs);
+});
 test('extension identifies Amazon, Mercado catalog and item URLs without matching names',async()=>{
   const amazon={name:'Mesmo nome',category:'celulares',offers:[{storeId:'amazon',url:'https://amzn.to/owner',externalId:'B012345678'}]};
   const mercado={name:'Mesmo nome',category:'celulares',offers:[{storeId:'mercado-livre',url:'https://meli.la/owner',externalId:'item-MLB12345'}]};
@@ -94,7 +111,7 @@ const mergeStoreUrl=url(compile(await readFile('lib/admin-import-store.ts','utf8
 const {mergeImportedProduct}=await import(mergeStoreUrl);
 const routeDependencies={
   'node:crypto': 'node:crypto',
-  'firebase-admin/storage': url('export const getDownloadURL=async()=>"";'),
+  '@/lib/laravel-storage': url('export const getDownloadURL=async()=>"";'),
   'next/server': url('export class NextResponse extends Response {static json(body,options){return new NextResponse(JSON.stringify(body),options);}}'),
   '@/lib/extension-auth': url('export const extensionHeaders=()=>({});export const requireExtension=async()=>({uid:"user"});'),
   '@/lib/admin-model': adminUrl,

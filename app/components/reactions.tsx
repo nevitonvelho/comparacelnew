@@ -1,8 +1,8 @@
 "use client";
 import { UiIcon } from "./icons";
 import { useEffect,useState } from "react";
-import { doc,onSnapshot } from "firebase/firestore";
-import { getDatabase } from "@/lib/firebase/client";
+import { doc,onSnapshot } from "@/lib/laravel-client-data";
+import { getDatabase } from "@/lib/laravel-client-data";
 import { pageIdentity,type PageKind } from "@/lib/engagement-model";
 import { emptyReactions,reactionOptions,reactionSummary,type ReactionCounts } from "@/lib/reaction-model";
 import { useReactions } from "./reaction-provider";

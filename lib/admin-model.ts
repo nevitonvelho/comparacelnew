@@ -49,7 +49,7 @@ export function validateAdminProduct(value: unknown): AdminProduct {
   const revision = numeric(input.revision, "Versão", 0, Number.MAX_SAFE_INTEGER);
   if (!Number.isInteger(revision)) throw new AdminError("Versão inválida.");
   const imageUrl = text(input.imageUrl, "Imagem", 2000);
-  if (imageUrl && !imageUrl.startsWith("https://firebasestorage.googleapis.com/v0/b/comparacel.firebasestorage.app/o/products%2F")) throw new AdminError("Use uma imagem enviada ao Storage do Comparacel.");
+  if (imageUrl && !(imageUrl.startsWith("https://firebasestorage.googleapis.com/v0/b/comparacel.firebasestorage.app/o/products%2F") || /^https:\/\/api\.comparacel\.com\.br\/api\/v1\/media\/[a-f0-9]{64}$/.test(imageUrl) || process.env.NODE_ENV !== "production" && /^http:\/\/(127\.0\.0\.1|localhost):8000\/api\/v1\/media\/[a-f0-9]{64}$/.test(imageUrl))) throw new AdminError("Use uma imagem enviada ao Comparacel.");
   const specs = list(input.specs, "Especificações", 200).map(value => {
     const spec = object(value);
     const slug = text(spec.slug, "Identificador da especificação", 200, true);

@@ -1,5 +1,4 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,9 +12,6 @@ const firebaseConfig = {
 
 export function getFirebaseApp() {
   return getApps().length ? getApp() : initializeApp(firebaseConfig);
-}
-export function getDatabase() {
-  return getFirestore(getFirebaseApp());
 }
 
 // Analytics depends on browser APIs; never initialize during server rendering.

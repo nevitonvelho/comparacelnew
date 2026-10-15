@@ -2,8 +2,8 @@
 import { usePathname } from "next/navigation";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
-import { getDatabase } from "@/lib/firebase/client";
+import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "@/lib/laravel-client-data";
+import { getDatabase } from "@/lib/laravel-client-data";
 import { comparisonSlug } from "@/lib/product-model";
 import { useAuth } from "./auth-provider";
 

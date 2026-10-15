@@ -11,7 +11,7 @@ export async function recordReaction(db:Firestore,uid:string,identity:Identity,r
   const vote=db.collection("users").doc(uid).collection("reactions").doc(identity.key);
   const budget=db.collection("reactionBudgets").doc(uid);
   return db.runTransaction(async transaction=>{
-    const products=await transaction.getAll(...identity.ids.map(id=>db.collection("products").doc(id)));
+    const products=await transaction.getAll(...identity.ids.map(id=>db.collection("products").doc(id)), {fieldMask:["isActive","categorySlug"]});
     if(products.some(product=>!product.exists||product.data()?.isActive!==true)
       || (products.length===2&&products[0].data()?.categorySlug!==products[1].data()?.categorySlug)) throw new ReactionError(404,"Produto ou comparação indisponível.");
     const [stats,previous,quota]=await transaction.getAll(reference,vote,budget);
