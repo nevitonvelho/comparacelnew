@@ -14,6 +14,7 @@ import { money, type Product } from "@/lib/product-model";
 export function ProductCard({ product, compact = false, showReactions = !compact }: { product: Product; compact?: boolean; showReactions?: boolean }) {
   const { categoryNames, selected, toggle } = useCatalog();
   const offer = purchaseOffers(product)[0];
+  if (!offer) return null;
   const highlights = product.highlights.filter(item => item.kind === "pro").slice(0, 2);
   return <article className={`product-card${compact ? " compact" : ""}`}>
     <div className="product-art-wrapper">
@@ -33,7 +34,8 @@ export function ProductCard({ product, compact = false, showReactions = !compact
         {!compact && <small>{offer?.price != null ? "Oferta cadastrada" : "Ofertas"}</small>}
         <strong>{!offer ? "Sem oferta ativa" : offer.price === null ? "Consultar na loja" : money(offer.price)}</strong>
         {!offer && <small className="card-merchant">Nenhum link de compra disponível</small>}
-        {offer && <><small className="card-merchant">{offer.store}{offer.priceCondition === "pix" ? " · No Pix" : ""}</small>{!compact && <PriceUpdated dates={[offer.priceUpdatedAt]} />}</>}
+        {offer?.priceCondition === "pix" && <small className="card-merchant">No Pix</small>}
+        {offer && !compact && <PriceUpdated dates={[offer.priceUpdatedAt]} />}
       </div>
       {offer ? <AffiliateLink product={product} offer={offer} position="product_card" /> : <Link className="button secondary card-details-cta" href={`/produto/${product.id}`}>Conhecer o produto <UiIcon name="right" /></Link>}
       <div className="card-actions">
