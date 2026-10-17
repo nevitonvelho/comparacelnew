@@ -538,7 +538,9 @@ td.better { background: #eaf7ee; color: #126b38; font-weight: 600; }
 
 .reactions { padding:18px; border:1px solid var(--line); border-radius:12px; margin:18px 0; background:#fff; }
 .reactions-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; font-size:12px; font-weight:600; margin-bottom:12px; }
+.reaction-invitation { margin:-5px 0 12px; color:var(--muted); font-size:11px; line-height:1.6; }
 .reaction-seal { display:inline-flex; align-items:center; border-radius:20px; padding:5px 9px; font-size:10px; line-height:1.5; font-weight:600; }
+.reaction-prompt { color:#0759d8; background:#edf5ff; }
 .seal-high { color:#126739; background:#e8f6ed; }
 .seal-low { color:#ac2925; background:var(--brand-soft); }
 .seal-pending,.seal-mixed { color:#65707b; background:#f2f4f6; }
@@ -554,6 +556,7 @@ td.better { background: #eaf7ee; color: #126b38; font-weight: 600; }
 .reaction-explanation summary { cursor:pointer; }
 .reactions-compact { padding:12px 0; margin:8px 0 14px; border:0; border-top:1px solid var(--line); border-radius:0; }
 .reactions-compact .reactions-heading { font-size:11px; align-items:flex-start; }
+.reactions-compact .reaction-invitation { margin:-3px 0 10px; font-size:10px; }
 .reactions-compact .reaction-options { gap:5px; }
 .reactions-compact .reaction-options button { gap:5px; padding:8px 3px; flex-direction:column; font-size:10px; }
 .reactions-compact .reaction-face { font-size:22px; }
