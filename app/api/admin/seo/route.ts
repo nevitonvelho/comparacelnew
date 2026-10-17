@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         if (parsed.ids.some(id => !preload.products.has(id))) continue;
         if (parsed.ids.length === 2 && preload.products.get(parsed.ids[0])?.categorySlug !== preload.products.get(parsed.ids[1])?.categorySlug) continue;
         const page = (await readSeoTarget(db, path, snapshot, preload)).page;
-        pages.push({ path: page.path, kind: page.kind, name: page.name, active: page.active, score: page.score, issues: page.issues, current: page.current, previous: page.previous, performance: page.performance });
+        pages.push({ products: page.products, path: page.path, kind: page.kind, name: page.name, active: page.active, score: page.score, issues: page.issues, current: page.current, previous: page.previous, performance: page.performance });
       } catch { /* Ignore legacy paths that cannot be mapped to current products. */ }
     }
     const connection = await searchConnectionStatus();

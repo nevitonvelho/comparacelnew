@@ -1464,11 +1464,21 @@ h3 { font-weight:600; }
 .admin-seo textarea { resize:vertical; line-height:1.65; }
 .admin-seo textarea[readonly], .admin-seo input[readonly] { background:var(--soft); color:var(--muted); }
 .seo-table-wrap { overflow-x:auto; }
-.seo-table { width:100%; border-collapse:collapse; font-size:12px; text-align:left; }
+.seo-table { width:100%; min-width:900px; table-layout:auto; border-collapse:collapse; font-size:12px; text-align:left; }
 .seo-table th, .seo-table td { padding:14px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
-.seo-table th { color:var(--muted); font-weight:500; white-space:nowrap; }
-.seo-table td:first-child { min-width:210px; max-width:340px; }
-.seo-table td:first-child strong { display:block; overflow-wrap:anywhere; }
+.seo-table th { background:var(--soft); color:var(--ink); font-weight:600; white-space:nowrap; }
+.seo-table .seo-page-cell { width:280px; min-width:280px; max-width:320px; }
+.seo-page-identity { display:flex; align-items:center; gap:12px; color:var(--ink); }
+.seo-page-identity:hover .seo-page-label strong { color:var(--brand-blue); }
+.seo-page-media { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.seo-page-thumbnail { display:block; width:52px; height:56px; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fff; }
+.seo-page-media.pair .seo-page-thumbnail { width:38px; height:48px; }
+.seo-page-thumbnail .product-photo { width:100%; height:100%; min-height:0; }
+.seo-page-thumbnail .product-photo img { padding:4px; }
+.seo-page-thumbnail .image-placeholder { min-height:0; height:100%; font-size:0; gap:0; }
+.seo-page-thumbnail .image-placeholder > span { font-size:18px; }
+.seo-page-label { display:block; min-width:0; flex:1; }
+.seo-table .seo-page-label strong { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; max-height:36px; overflow:hidden; overflow-wrap:break-word; line-height:18px; }
 .seo-table small { display:block; color:var(--muted); margin-top:6px; }
 .seo-table .button { min-height:36px; padding:8px 12px; font-size:12px; white-space:nowrap; }
 .seo-score { display:inline-flex; padding:6px 9px; border-radius:7px; font-weight:700; white-space:nowrap; }
