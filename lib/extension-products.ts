@@ -141,10 +141,15 @@ export function extensionPriceQueue(products: AdminProduct[], now = Date.now()) 
   })).sort((a, b) => (a.checkedAt ?? 0) - (b.checkedAt ?? 0) || a.name.localeCompare(b.name));
 }
 
-export function validateExtensionBatchOffer(product: AdminProduct | null, source: "amazon" | "mercadolivre" | "shopee", identity: string, input: Record<string, unknown>) {
+export function validateExtensionBatchOffer(product: AdminProduct | null, source: "amazon" | "mercadolivre" | "shopee", identity: string, input: Record<string, unknown>, captureName = "") {
   if (!["price", "unavailable"].includes(String(input.mode)) || !product || typeof input.storeId !== "string" || typeof input.offerUrl !== "string") throw new AdminError("Lote inválido.");
   const offer = product.offers.find(offer => offer.storeId === input.storeId && offer.url === input.offerUrl);
-  if (!offer || offer.url !== input.offerUrl || !offerBelongsToSource(offer, source) || !offerMatchesIdentity(offer, source, identity)) {
+  const identityMatches = offer && offerMatchesIdentity(offer, source, identity);
+  const redirectedUnavailable = !identityMatches && input.mode === "unavailable" && typeof input.expectedIdentity === "string"
+    && offer && offerMatchesIdentity(offer, source, input.expectedIdentity)
+    && extensionProductSimilarity(captureName, product.name) >= 0.65;
+  if (!offer || offer.url !== input.offerUrl || !offerBelongsToSource(offer, source) || (!identityMatches && !redirectedUnavailable)) {
     throw new AdminError("O anúncio não corresponde à oferta cadastrada. Revise no painel.", 409);
   }
+  return { offer, redirectedUnavailable: Boolean(redirectedUnavailable) };
 }

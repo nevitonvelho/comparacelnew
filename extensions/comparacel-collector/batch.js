@@ -93,7 +93,7 @@ async function run() {
           if (pauseRequested) break;
           lastWriteAt = Date.now();
           const unavailable = capture.price === null;
-          await api("POST", {mode: unavailable ? "unavailable" : "price", batch: true, productId: item.productId, storeId: item.storeId, offerUrl: item.offerUrl, capture});
+          await api("POST", {mode: unavailable ? "unavailable" : "price", batch: true, productId: item.productId, storeId: item.storeId, offerUrl: item.offerUrl, expectedIdentity: item.identity, capture});
           state.results.push({...item, ok: true, unavailable});
         } catch (error) {
           if (error.blocked || [401, 403, 429].includes(error.status) || !error.status && /fetch|network|timeout/i.test(error.message)) {

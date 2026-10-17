@@ -70,14 +70,14 @@ export async function POST(request:NextRequest) {
     let existing=matched;
     if(input.productId !== undefined) {
       if(typeof input.productId!=="string" || input.productId.length>400 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.productId))throw new AdminError("Produto inválido.");
-      if(matched && matched.id!==input.productId)throw new AdminError("Este anúncio já pertence a outro produto.",409);
+      if(matched && matched.id!==input.productId && !(mode==="unavailable" && input.batch===true))throw new AdminError("Este anúncio já pertence a outro produto.",409);
       const doc=await db.doc(`products/${input.productId}`).get();
       if(!doc.exists)throw new AdminError("Produto não encontrado.",404);
       existing=adminProductFromData(doc.id,doc.data()!);
     }
-    if(input.batch===true)validateExtensionBatchOffer(existing,capture.source,identity,input);
+    const batchValidation=input.batch===true?validateExtensionBatchOffer(existing,capture.source,identity,input,capture.name):null;
     if(mode!=="import" && !existing)throw new AdminError("Selecione um produto cadastrado.");
-    if((mode==="unavailable" || mode==="price") && !existing?.offers.some(offer=>offerBelongsToSource(offer,capture.source) && offerMatchesIdentity(offer,capture.source,identity)))throw new AdminError("Este anúncio ainda não está vinculado. Adicione uma oferta com o link de afiliado.");
+    if((mode==="unavailable" || mode==="price") && !existing?.offers.some(offer=>offerBelongsToSource(offer,capture.source) && offerMatchesIdentity(offer,capture.source,identity)) && !batchValidation?.redirectedUnavailable)throw new AdminError("Este anúncio ainda não está vinculado. Adicione uma oferta com o link de afiliado.");
     const categorySlug=existing?.category ?? input.category;
     if(typeof categorySlug!=="string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(categorySlug))throw new AdminError("Escolha a categoria.");
     const category=await db.collection("categories").where("slug","==",categorySlug).limit(1).get();
@@ -88,6 +88,10 @@ export async function POST(request:NextRequest) {
     if(!affiliateUrl)throw new AdminError("Informe o link de afiliado desta loja.");
     const line=capture.source==="amazon"?affiliateUrl:`${affiliateUrl} ${capture.pageUrl}`;
     const collected=collectedFromProductCapture(capture,line);
+    if(batchValidation?.redirectedUnavailable) {
+      collected.externalId=String(input.expectedIdentity);
+      collected.buyUrl=batchValidation.offer.url;
+    }
     const budget=db.doc(`adminImportBudgets/${actor.uid}`);const lease=randomUUID();
     const priceUpdate=mode==="price" || mode==="unavailable";
     await db.runTransaction(async tx=>{
