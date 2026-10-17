@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { User } from "firebase/auth";
+import { SeoEditorFeedback, SeoDraftSkeleton } from "./admin-seo-feedback";
 import { adminRequest } from "./admin-client";
 import type { SeoDetail, SeoFields, SeoReport, SearchMetrics } from "@/lib/seo-workbench";
 
@@ -26,6 +27,16 @@ export function AdminSeo({ user, onSaved, canConnect = false }: { user: User; on
   const [filter, setFilter] = useState("all");
   const [path, setPath] = useState("");
   const [busy, setBusy] = useState("");
+  const [feedbackScope, setFeedbackScope] = useState<"global" | "editor">("global");
+  const [elapsed, setElapsed] = useState(0);
+  const [editorAction, setEditorAction] = useState<"generate" | "apply">("generate");
+  const generating = busy === "Gerando sugestão com Gemini…";
+  useEffect(() => {
+    if (!generating) return;
+    const started = Date.now();
+    const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [generating]);
   const [notice, setNotice] = useState(connectionResult === "connected" ? "Search Console conectado. Clique em sincronizar para carregar os dados." : "");
   const [error, setError] = useState(connectionErrors[connectionResult || ""] || "");
   const [visible, setVisible] = useState(30);
@@ -37,9 +48,9 @@ export function AdminSeo({ user, onSaved, canConnect = false }: { user: User; on
     void adminRequest<SeoReport>(user, "seo").then(value => { if (active) { setReport(value); } }).catch(error => { if (active) setError(error instanceof Error ? error.message : "Não foi possível carregar SEO."); });
     return () => { active = false; };
   }, [user, attempt]);
-  async function run(label: string, work: () => Promise<void>) {
+  async function run(label: string, work: () => Promise<void>, scope: "global" | "editor" = "global") {
     if (lock.current) return;
-    lock.current = true; setBusy(label); setError(""); setNotice("");
+    lock.current = true; if (scope === "editor") setEditorAction(label.startsWith("Gerando") ? "generate" : "apply"); setFeedbackScope(scope); setElapsed(0); setBusy(label); setError(""); setNotice("");
     try { await work(); } catch (error) { setError(error instanceof Error ? error.message : "Não foi possível concluir a operação."); }
     finally { lock.current = false; setBusy(""); }
   }
@@ -79,8 +90,8 @@ export function AdminSeo({ user, onSaved, canConnect = false }: { user: User; on
     if (changed && !window.confirm("Substituir a edição ainda não aplicada por uma nova sugestão do Gemini?")) return;
     await run("Gerando sugestão com Gemini…", async () => {
       const value = await adminRequest<{ fields: SeoFields; warning?: string; model: string }>(user, "seo/generate", { method: "POST", body: JSON.stringify({ path: detail.page.path, fingerprint: detail.page.fingerprint }) });
-      setDraftFields(value.fields); setNotice(value.warning || `Sugestão gerada com ${value.model}. Revise os fatos e os textos antes de aplicar.`);
-    });
+      setDraftFields(value.fields); setNotice(`Sugestão gerada com ${value.model}. Os campos foram preenchidos para revisão; nada foi aplicado. ${value.warning || "Confira os fatos e clique em aplicar quando estiver pronto."}`);
+    }, "editor");
   }
   async function apply() {
     if (!detail || !draft || !changed) return;
@@ -91,7 +102,7 @@ export function AdminSeo({ user, onSaved, canConnect = false }: { user: User; on
       setReport(await adminRequest<SeoReport>(user, "seo"));
       try { await onSaved(); } catch { /* SEO was saved; the report is already current. */ }
       setNotice("Conteúdo aplicado à página e caches atualizados. O Google precisa rastrear a página novamente para refletir as mudanças.");
-    });
+    }, "editor");
   }
   const pages = (report?.pages || []).filter(page => (kind === "all" || page.kind === kind) && (filter === "all" || filter === "content" && page.score < 75 || filter === "opportunity" && page.performance === "Oportunidade de melhoria" || filter === "good" && page.performance === "Bom desempenho" || filter === "no-data" && !page.current) && `${page.name} ${page.path}`.toLocaleLowerCase("pt-BR").includes(search.toLocaleLowerCase("pt-BR"))).sort((a, b) => Number(b.active) - Number(a.active) || (b.current?.impressions ?? 0) - (a.current?.impressions ?? 0) || a.score - b.score);
   function edit(field: keyof SeoFields, value: string) { if (field === "tags") setTagsText(value); setDraft(current => current ? { ...current, [field]: field === "tags" ? value.split(",").map(tag => tag.trim()).filter(Boolean) : value } : current); }
@@ -104,16 +115,17 @@ export function AdminSeo({ user, onSaved, canConnect = false }: { user: User; on
       {report && !report.geminiConfigured && <p>Gemini ainda não configurado no servidor. Você pode revisar e editar os campos manualmente.</p>}
       {(report?.truncated || report?.snapshot?.truncated) && <p>O relatório alcançou um limite de consulta e pode não incluir todas as páginas. Você também pode abrir uma URL específica abaixo. A API do Google fornece as principais linhas e não garante cobertura completa.</p>}
     </section>
-    {error && <p role="alert" className="admin-alert">{error}</p>}{notice && <p role="status" className="admin-notice">{notice}</p>}{busy && <p role="status">{busy}</p>}
+    {feedbackScope === "global" && <>{error && <p role="alert" className="admin-alert">{error}</p>}{notice && <p role="status" className="admin-notice">{notice}</p>}{busy && <p role="status">{busy}</p>}</>}
     {!report && !error && <p role="status">Carregando diagnóstico…</p>}{!report && error && <button className="button secondary" onClick={() => setAttempt(value => value + 1)}>Tentar novamente</button>}
     <section className="admin-card"><form className="seo-open-path" onSubmit={event => { event.preventDefault(); void open(path.trim()); }}><label>Abrir produto ou comparação pelo caminho<input value={path} onChange={event => setPath(event.target.value)} placeholder="/produto/identificador ou /comparar/a-vs-b" maxLength={900} required /></label><button className="button secondary" disabled={Boolean(busy)}>Abrir diagnóstico</button></form></section>
-    {detail && draft && <section className="admin-card seo-editor"><div className="seo-toolbar"><div><span className="eyebrow">REVISÃO DE CONTEÚDO</span><h2>{detail.page.name}</h2><a href={detail.page.path} target="_blank" rel="noopener noreferrer" className="section-link">Ver página ↗</a></div><button className="button primary" disabled={Boolean(busy) || !report?.geminiConfigured} onClick={() => void generate()}>Gerar sugestão com Gemini</button></div>
+    {detail && draft && <section className="admin-card seo-editor"><div className="seo-toolbar"><div><span className="eyebrow">REVISÃO DE CONTEÚDO</span><h2>{detail.page.name}</h2><a href={detail.page.path} target="_blank" rel="noopener noreferrer" className="section-link">Ver página ↗</a></div><button className="button primary" disabled={Boolean(busy) || !report?.geminiConfigured} onClick={() => void generate()} aria-busy={generating}>{generating && <span className="seo-spinner" aria-hidden="true" />}{generating ? "Gerando sugestão…" : feedbackScope === "editor" && editorAction === "generate" && error ? "Tentar gerar novamente" : "Gerar sugestão com Gemini"}</button></div>
+      {feedbackScope === "editor" && <SeoEditorFeedback busy={busy} generating={generating} elapsed={elapsed} error={error} notice={notice} />}
       <Metrics current={detail.page.current} previous={detail.page.previous} />
       <p><strong>Qualidade editorial: {detail.page.score}/100.</strong> {detail.page.performance}{!detail.page.active && " · Produto desativado no catálogo"}</p>
       {detail.page.issues.length > 0 && <ul className="seo-issues">{detail.page.issues.map(issue => <li key={issue}>{issue}</li>)}</ul>}
       {detail.queryWarning && <p>{detail.queryWarning}</p>}
       {detail.queries.length > 0 && <details><summary>Buscas que levaram a impressões da página</summary><ul className="seo-query-list">{detail.queries.map(row => <li key={row.keys[0]}><strong>{row.keys[0]}</strong><span>{count(row.clicks)} cliques · {count(row.impressions)} impressões · CTR {ctr(row.ctr)} · posição {row.position.toFixed(1)}</span></li>)}</ul></details>}
-      <form onSubmit={event => { event.preventDefault(); void apply(); }}><fieldset disabled={Boolean(busy)} className="seo-fieldset"><div className="seo-edit-grid"><div><h3>Conteúdo atual</h3><label>Título SEO<textarea readOnly value={detail.page.fields.title} rows={2} /></label><label>Metadescrição<textarea readOnly value={detail.page.fields.metaDescription} rows={3} /></label><label>Descrição<textarea readOnly value={detail.page.fields.description} rows={9} /></label><label>Temas<input readOnly value={detail.page.fields.tags.join(", ")} /></label></div><div><h3>Conteúdo para aplicar</h3><label>Título SEO · {draft.title.length}/70<textarea maxLength={70} rows={2} value={draft.title} onChange={event => edit("title", event.target.value)} /></label><label>Metadescrição · {draft.metaDescription.length}/160<textarea maxLength={160} rows={3} value={draft.metaDescription} onChange={event => edit("metaDescription", event.target.value)} /></label><label>Descrição · {draft.description.length}/12000<textarea maxLength={12000} rows={9} value={draft.description} onChange={event => edit("description", event.target.value)} /></label><label>Temas separados por vírgula · até 8<input value={tagsText} onChange={event => edit("tags", event.target.value)} /></label></div></div>
+      <form onSubmit={event => { event.preventDefault(); void apply(); }}><fieldset disabled={Boolean(busy)} className="seo-fieldset"><div className="seo-edit-grid"><div><h3>Conteúdo atual</h3><label>Título SEO<textarea readOnly value={detail.page.fields.title} rows={2} /></label><label>Metadescrição<textarea readOnly value={detail.page.fields.metaDescription} rows={3} /></label><label>Descrição<textarea readOnly value={detail.page.fields.description} rows={9} /></label><label>Temas<input readOnly value={detail.page.fields.tags.join(", ")} /></label></div><div className="seo-draft-fields" aria-busy={generating}><h3>{generating ? "Preparando sugestão…" : "Conteúdo para aplicar"}</h3>{generating ? <SeoDraftSkeleton /> : <><label>Título SEO · {draft.title.length}/70<textarea maxLength={70} rows={2} value={draft.title} onChange={event => edit("title", event.target.value)} /></label><label>Metadescrição · {draft.metaDescription.length}/160<textarea maxLength={160} rows={3} value={draft.metaDescription} onChange={event => edit("metaDescription", event.target.value)} /></label><label>Descrição · {draft.description.length}/12000<textarea maxLength={12000} rows={9} value={draft.description} onChange={event => edit("description", event.target.value)} /></label><label>Temas separados por vírgula · até 8<input value={tagsText} onChange={event => edit("tags", event.target.value)} /></label></>}</div></div>
         <div className="seo-snippet"><small>Prévia aproximada do resultado de busca</small><span>comparacel.com.br{detail.page.path}</span><strong>{draft.title || detail.page.name} | Comparacel</strong><p>{draft.metaDescription || "A descrição será escolhida pelo mecanismo de busca."}</p></div><p>Revise nomes, versões e características. O Google pode reescrever o título e o resumo. Os temas aparecem na página; não são meta keywords.</p><div className="seo-actions"><button className="button primary" disabled={!changed}>Aplicar conteúdo revisado</button><button type="button" className="button secondary" disabled={!changed} onClick={() => setDraftFields(detail.page.fields)}>Descartar edição</button></div>
       </fieldset></form>
       {detail.history.length > 0 && <details><summary>Histórico e recuperação de versões</summary><ul className="seo-history">{detail.history.map(entry => <li key={entry.id}><div><strong>{new Date(entry.at).toLocaleString("pt-BR")}</strong><small>{entry.email}</small></div><button className="button secondary" disabled={Boolean(busy)} onClick={() => { if (changed && !window.confirm("Substituir a edição atual pela versão anterior?")) return; setDraftFields(entry.before); setNotice("Versão anterior carregada para revisão. Clique em aplicar para restaurar."); }}>Revisar versão anterior</button></li>)}</ul></details>}

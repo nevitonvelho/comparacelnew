@@ -8,7 +8,7 @@ type OAuthClient = { client_id: string; client_secret: string; redirect_uris?: s
 export type SearchCredentials = { type?: string; client_email?: string; private_key?: string; web?: OAuthClient; installed?: OAuthClient };
 export async function readSearchCredentials(): Promise<SearchCredentials> {
   try {
-    const raw = process.env.SEARCH_CONSOLE_CREDENTIALS_JSON || await readFile(process.env.SEARCH_CONSOLE_CREDENTIALS_FILE || "", "utf8");
+    const raw = process.env.SEARCH_CONSOLE_CREDENTIALS_JSON || (process.env.NODE_ENV !== "production" ? await readFile(/* turbopackIgnore: true */ process.env.SEARCH_CONSOLE_CREDENTIALS_FILE || "", "utf8") : "");
     return JSON.parse(raw);
   } catch { throw new AdminError("Configure as credenciais do Search Console no servidor.", 503); }
 }

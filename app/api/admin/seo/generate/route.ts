@@ -8,7 +8,7 @@ import { absoluteUrl } from "@/lib/seo";
 import { AdminError } from "@/lib/admin-model";
 import { validateSeoPath, type SearchRow, type SearchSnapshot } from "@/lib/seo-workbench";
 export const runtime = "nodejs";
-export const maxDuration = 90;
+export const maxDuration = 180;
 export async function POST(request: NextRequest) {
   try {
     const actor = await requireAdministrator(request, "seo.manage");

@@ -19,6 +19,11 @@ try {
   globalThis.fetch=async(endpoint,options)=>{assert(!endpoint.includes('test-secret'));assert.equal(options.headers['x-goog-api-key'],'test-secret');assert.equal(options.cache,'no-store');const body=JSON.parse(options.body);assert.equal(body.generationConfig.responseMimeType,'application/json');return mockCandidate(fields);};
   const result=await generateSeoSuggestion({products:[]},fields,[]);assert.deepEqual(result.fields,fields);
  });
+ await test('Flash-Lite explicitly minimizes reasoning for interactive generation',async()=>{
+  process.env.GEMINI_MODEL='gemini-3.1-flash-lite';
+  globalThis.fetch=async(endpoint,options)=>{const body=JSON.parse(options.body);assert.equal(body.generationConfig.thinkingConfig.thinkingLevel,'minimal');assert.equal(body.generationConfig.maxOutputTokens,4096);return mockCandidate(fields);};
+  await generateSeoSuggestion({},fields,[]);process.env.GEMINI_MODEL='gemini-3.8-flash';
+ });
  await test('Gemini refuses incomplete output and unsafe fields without returning a draft',async()=>{
   for(const [value,reason] of [[fields,'MAX_TOKENS'],[{...fields,description:'<script>unsafe</script>'},'STOP'],[{...fields,title:''},'STOP']]){
    globalThis.fetch=async()=>mockCandidate(value,reason);await assert.rejects(generateSeoSuggestion({},fields,[]),error=>error.status===502);
@@ -27,8 +32,10 @@ try {
  await test('provider errors and timeouts never expose the credential',async()=>{
   globalThis.fetch=async()=>Response.json({error:{message:'test-secret'}},{status:429});
   await assert.rejects(generateSeoSuggestion({},fields,[]),error=>error.status===502&&!error.message.includes('test-secret'));
-  globalThis.fetch=async()=>{throw new Error('test-secret');};
+  globalThis.fetch=async()=>{throw new DOMException('test-secret','TimeoutError');};
   await assert.rejects(generateSeoSuggestion({},fields,[]),error=>error.status===504&&!error.message.includes('test-secret'));
+  globalThis.fetch=async()=>{throw new Error('test-secret');};
+  await assert.rejects(generateSeoSuggestion({},fields,[]),error=>error.status===502&&!error.message.includes('test-secret'));
  });
 } finally {
  globalThis.fetch=original;
