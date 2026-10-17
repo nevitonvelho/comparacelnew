@@ -8,7 +8,8 @@ import { getServerProducts } from "@/lib/server-catalog";
 import { absoluteUrl, pageMetadata, siteUrl, siteName } from "@/lib/seo";
 import { JsonLd } from "./components/json-ld";
 import { CatalogProvider } from "./components/catalog-provider";
-import { Header, Footer, ComparisonBar } from "./components/site-shell";
+import { PageSkeleton } from "./components/skeleton";
+import { Logo, Header, Footer, ComparisonBar } from "./components/site-shell";
 import { AuthProvider } from "./components/auth-provider";
 import { LibraryProvider } from "./components/library-provider";
 import { ReactionProvider } from "./components/reaction-provider";
@@ -33,9 +34,16 @@ export const metadata: Metadata = {
   ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
 };
 export const viewport: Viewport = { themeColor: "#0061e8" };
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const products = await getServerProducts();
-  const categorySettings = await getServerCategorySettings();
+async function SiteContent({ children }: { children: React.ReactNode }) {
+  const [products, categorySettings] = await Promise.all([getServerProducts(), getServerCategorySettings()]);
+  return <AuthProvider><LibraryProvider><ReactionProvider><CatalogProvider initialProducts={products} categorySettings={categorySettings}><Header />{children}<Footer /><ComparisonBar /></CatalogProvider></ReactionProvider></LibraryProvider></AuthProvider>;
+}
+
+function SiteLoading() {
+  return <><header className="site-header"><div className="header"><Logo /><span className="skeleton-block skeleton-header-search" aria-hidden="true" /></div></header><PageSkeleton variant="catalog" /></>;
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Extensions may insert attributes on body before React hydrates it.
   // Suppression is limited to this element; child components retain diagnostics.
   return <html lang="pt-BR" className={inter.variable}><head>
@@ -45,6 +53,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <Suspense fallback={null}><GoogleTagManager /></Suspense>
     <ConversionTracking />
     <JsonLd data={{ "@context": "https://schema.org", "@type": "Organization", name: siteName, url: siteUrl, logo: absoluteUrl("/brand/comparacel-blue-teal.webp") }} />
-    <AuthProvider><LibraryProvider><ReactionProvider><CatalogProvider initialProducts={products} categorySettings={categorySettings}><a className="skip-link" href="#conteudo">Pular para o conteúdo</a><Header />{children}<Footer /><ComparisonBar /></CatalogProvider></ReactionProvider></LibraryProvider></AuthProvider>
+    <a className="skip-link" href="#conteudo">Pular para o conteúdo</a><Suspense fallback={<SiteLoading />}><SiteContent>{children}</SiteContent></Suspense>
   </body></html>;
 }

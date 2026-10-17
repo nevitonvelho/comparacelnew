@@ -20,7 +20,7 @@ import { ProductImage } from "./product-image";
 export function ProductDetail({ slug, product: serverProduct, history = [], historyUnavailable = false }: { slug: string; product?: Product; history?: PriceHistoryPoint[]; historyUnavailable?: boolean }) {
   const { products, categoryNames, selected, toggle, status, message } = useCatalog();
   const product = serverProduct ?? products.find(item => item.id === slug);
-  if (!serverProduct && status !== "ready") return <main id="conteudo"><LoadState /></main>;
+  if (!serverProduct && status !== "ready") return <main id="conteudo"><LoadState variant="product" /></main>;
   if (!product) return <main id="conteudo" className="empty"><h1>Produto não encontrado</h1><Link href="/catalogo">Voltar ao catálogo <UiIcon name="right" /></Link></main>;
   const offers = purchaseOffers(product);
   const bestOffer = offers[0];
@@ -48,6 +48,7 @@ export function ProductDetail({ slug, product: serverProduct, history = [], hist
         <PriceUpdated kind="product" dates={[product.updatedAt]} />
         <p>{categoryNames[product.category] ?? product.category}</p>
         {description && <p className="product-description-preview">{descriptionPreview}</p>}
+        {Boolean(product.seoTags?.length) && <ul className="seo-topic-tags" aria-label="Temas do produto">{product.seoTags!.map(tag => <li key={tag}>{tag}</li>)}</ul>}
         <div className="price">
           <small>{lowestPrice === null ? "Ofertas disponíveis" : "Menor preço cadastrado"}</small>
           <strong>{lowestPrice === null ? "Consultar na loja" : money(lowestPrice)}</strong>

@@ -1,4 +1,5 @@
 "use client";
+import { CardsSkeleton, ContentSkeleton, type SkeletonVariant } from "./skeleton";
 import { UiIcon } from "./icons";
 import Link from "next/link";
 import { useState } from "react";
@@ -9,9 +10,9 @@ import { ProductCard } from "./product-card";
 import { HomeProductSections } from "./home-product-sections";
 export { ProductCard } from "./product-card";
 
-export function LoadState() {
+export function LoadState({ variant }: { variant?: SkeletonVariant }) {
   const { status, retry } = useCatalog();
-  if (status === "loading") return <p className="empty" role="status">Carregando produtos…</p>;
+  if (status === "loading") return variant ? <ContentSkeleton variant={variant} /> : <CardsSkeleton />;
   if (status === "error") return <div className="empty" role="alert"><p>Não foi possível carregar o catálogo.</p><button className="button secondary" onClick={retry}>Tentar novamente</button></div>;
   return null;
 }

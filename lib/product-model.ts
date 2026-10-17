@@ -7,7 +7,7 @@ export type Product = {
   updatedAt?: string;
   id: string; name: string; brand: string; category: string; score: string;
   price: number | null; imageUrl: string | null; label: string; specs: Spec[];
-  description?: string; metaTitle?: string; metaDescription?: string;
+  description?: string; metaTitle?: string; metaDescription?: string; seoTags?: string[];
   offers: Offer[]; highlights: { kind: string; text: string }[];
 };
 export const categoryNames: Record<string, string> = {
