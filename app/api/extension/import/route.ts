@@ -77,13 +77,13 @@ export async function POST(request:NextRequest) {
     }
     if(input.batch===true)validateExtensionBatchOffer(existing,capture.source,identity,input);
     if(mode!=="import" && !existing)throw new AdminError("Selecione um produto cadastrado.");
-    if(mode==="unavailable" && !existing?.offers.some(offer=>offerBelongsToSource(offer,capture.source)))throw new AdminError("A ficha selecionada ainda não possui uma oferta desta loja.");
+    if((mode==="unavailable" || mode==="price") && !existing?.offers.some(offer=>offerBelongsToSource(offer,capture.source) && offerMatchesIdentity(offer,capture.source,identity)))throw new AdminError("Este anúncio ainda não está vinculado. Adicione uma oferta com o link de afiliado.");
     const categorySlug=existing?.category ?? input.category;
     if(typeof categorySlug!=="string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(categorySlug))throw new AdminError("Escolha a categoria.");
     const category=await db.collection("categories").where("slug","==",categorySlug).limit(1).get();
     if(category.empty)throw new AdminError("Categoria não cadastrada.");
     if(input.affiliateUrl!==undefined && (typeof input.affiliateUrl!=="string" || input.affiliateUrl.length>2000))throw new AdminError("Link de afiliado inválido.");
-    const savedPriceOffer=mode==="price" ? existing?.offers.find(offer=>offerBelongsToSource(offer,capture.source)) : undefined;
+    const savedPriceOffer=mode==="price" ? existing?.offers.find(offer=>offerBelongsToSource(offer,capture.source) && offerMatchesIdentity(offer,capture.source,identity)) : undefined;
     const affiliateUrl=(mode==="unavailable" || (mode==="price" && (matched || savedPriceOffer)))?capture.pageUrl:(input.affiliateUrl?.trim() || matched?.offers.find(offer=>offerMatchesIdentity(offer,capture.source,identity))?.url);
     if(!affiliateUrl)throw new AdminError("Informe o link de afiliado desta loja.");
     const line=capture.source==="amazon"?affiliateUrl:`${affiliateUrl} ${capture.pageUrl}`;
@@ -108,7 +108,7 @@ export async function POST(request:NextRequest) {
     }catch{warnings.push("Imagem não importada. Envie a imagem na edição do produto.");}
     const result=await persistImportedProduct(db,actor,capture.source,collected,existing,categorySlug,imageUrl,mode,input.batch===true?String(input.storeId):undefined);
     invalidateServerCatalog();revalidatePath(`/produto/${result.product.id}`);
-    return NextResponse.json({product:extensionProductSummary(result.product),created:result.created,name:result.product.name,editPath:`/admin?produto=${encodeURIComponent(result.product.id)}`,warnings,message:result.created?"Rascunho importado. Confira no painel antes de ativar.":mode==="unavailable"?"Oferta desta loja marcada como indisponível. Link e outras lojas preservados.":mode==="price"?"Preço atualizado. Link de afiliado e ficha preservados.":mode==="offer"?"Oferta e link de afiliado salvos; as outras lojas foram mantidas.":mode==="full"?"Informações e oferta atualizadas. Publicação, avaliação e outras lojas preservadas.":"Produto atualizado; publicação e campos manuais preservados."},{headers});
+    return NextResponse.json({product:extensionProductSummary(result.product),created:result.created,name:result.product.name,editPath:`/admin?produto=${encodeURIComponent(result.product.id)}`,warnings,message:result.created?"Rascunho importado. Confira no painel antes de ativar.":mode==="unavailable"?"Oferta desta loja marcada como indisponível. Link e outras lojas preservados.":mode==="price"?"Preço atualizado. Link de afiliado e ficha preservados.":mode==="offer"?"Oferta e link de afiliado salvos; as outras ofertas foram mantidas.":mode==="full"?"Informações e oferta atualizadas. Publicação, avaliação e outras lojas preservadas.":"Produto atualizado; publicação e campos manuais preservados."},{headers});
   }catch(error){return NextResponse.json({error:error instanceof AdminError?error.message:"Não foi possível importar. Tente novamente."},{status:error instanceof AdminError?error.status:503,headers});}
   finally {await release?.().catch(()=>{});}
 }

@@ -70,9 +70,12 @@ export function validateAdminProduct(value: unknown): AdminProduct {
     if (storeId.includes("/")) throw new AdminError("Loja inválida.");
     const externalId = offer.externalId === undefined ? undefined : text(offer.externalId, "Identificador da fonte", 100);
     if (externalId && !/^(?:[A-Z0-9]{10}|(?:item-)?MLB\d+)$/.test(externalId)) throw new AdminError("Identificador da fonte inválido.");
-    return { ...(externalId === undefined ? {} : {externalId}), id: `store-${storeId}`, storeId, price: offer.price === null ? null : Math.round(numeric(offer.price, "Preço", 0.01, 100000000) * 100) / 100, url: publicHttpUrl(offer.url, "Link da oferta"), available: bool(offer.available, "Disponibilidade") };
+    return { ...(externalId === undefined ? {} : {externalId}), id: text(offer.id, "Identificador da oferta", 200, true), storeId, price: offer.price === null ? null : Math.round(numeric(offer.price, "Preço", 0.01, 100000000) * 100) / 100, url: publicHttpUrl(offer.url, "Link da oferta"), available: bool(offer.available, "Disponibilidade") };
   });
-  if (new Set(offers.map(offer => offer.storeId)).size !== offers.length) throw new AdminError("Cadastre uma oferta por loja para este produto.");
+  if (offers.some(offer => !/^[a-zA-Z0-9_-]+$/.test(offer.id)) || new Set(offers.map(offer => offer.id)).size !== offers.length) throw new AdminError("Identificador de oferta inválido ou repetido.");
+  if (new Set(offers.map(offer => `${offer.storeId}:${offer.url}`)).size !== offers.length) throw new AdminError("Este link já está cadastrado nesta loja.");
+  const identities=offers.filter(offer=>offer.externalId).map(offer=>`${offer.storeId}:${offer.externalId}`);
+  if(new Set(identities).size !== identities.length) throw new AdminError("Este anúncio já está cadastrado nesta loja.");
   const highlights = list(input.highlights, "Destaques", 40).map(value => {
     const item = object(value);
     if (!["pro", "con"].includes(String(item.kind))) throw new AdminError("Tipo de destaque inválido.");

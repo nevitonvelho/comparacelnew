@@ -75,7 +75,7 @@
         try { const host = new URL(offer.url).hostname;return /(^|\.)amazon\.com\.br$/.test(host) || host === 'amzn.to' ? 'Amazon' : /(^|\.)mercadolivre\.com(?:\.br)?$/.test(host) || host === 'meli.la' ? 'Mercado Livre' : ''; }catch{return '';}
       }).filter(Boolean));
       const info = document.createElement('span');
-      info.textContent = `Lojas: ${[...stores].join(', ') || 'sem oferta destas lojas'}. ${stores.has(current) ? 'Pode atualizar a oferta desta loja.' : `Pode adicionar ${current} à mesma ficha.`} ${result.product ? '' : 'Confira modelo, capacidade e versão.'}`;
+      info.textContent = `Lojas: ${[...stores].join(', ') || 'sem oferta destas lojas'}. ${result.product ? 'Pode atualizar este anúncio.' : `Pode adicionar outro anúncio de ${current} à mesma ficha, preservando os existentes.`} ${result.product ? '' : 'Confira modelo, capacidade e versão.'}`;
       details.append(info);
       const edit = document.createElement('a');edit.href = new URL(product.editPath, response.origin).href;edit.target = '_blank';edit.rel = 'noopener noreferrer';edit.textContent = 'Ver ficha no painel';details.append(edit);
     }

@@ -69,7 +69,8 @@ try {
       const fixture=globalThis.popupFixture;const url=new URL(input);
       let data;
       if(options.method==='POST') {
-        fixture.requests.push(JSON.parse(options.body));fixture.linked=true;
+        const request=JSON.parse(options.body);fixture.requests.push(request);fixture.linked=true;
+        if(request.mode==='offer')fixture.product.offers.push({id:'ml-second',storeId:'mercado-livre',externalId:'MLB12345',price:2089.90,url:request.affiliateUrl});
         data={product:fixture.product,message:'Salvo.',warnings:[]};
       } else if(url.searchParams.has('pageUrl'))data={product:fixture.linked?fixture.product:null,suggestions:fixture.linked?[]:[fixture.product]};
       else if(url.searchParams.has('q'))data={products:[fixture.product]};
@@ -84,12 +85,14 @@ try {
   assert.match(await popup.locator('#match-status').textContent(),/Possível produto já cadastrado/);
   assert.equal(await popup.locator('#search-controls').evaluate(node=>node.open),false);
   assert.equal(await popup.locator('#search').inputValue(),'Lavadora');
-  assert.equal(await popup.locator('#update-price').isVisible(),true);
+  assert.equal(await popup.locator('#update-price').isVisible(),false);
   assert.equal(await popup.locator('#save-offer').isVisible(),true);
+  assert.match(await popup.locator('#existing-offers').textContent(),/1 oferta/);
   await popup.locator('#affiliate').fill('https://meli.la/owner');
   await popup.locator('#save-offer').click();
   await popup.waitForFunction(()=>document.querySelector('#status').textContent.includes(': Salvo.'));
   assert.equal(await popup.locator('#update-price').isVisible(),true);
+  assert.match(await popup.locator('#existing-offers').textContent(),/2 oferta/);
   const offerRequest=await popup.evaluate(()=>globalThis.popupFixture.requests[0]);
   assert.equal(offerRequest.productId,'lavadora-importada');assert.equal(offerRequest.mode,'offer');assert.equal(offerRequest.affiliateUrl,'https://meli.la/owner');
   await popup.locator('#collect').click();

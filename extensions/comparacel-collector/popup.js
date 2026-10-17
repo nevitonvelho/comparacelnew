@@ -121,12 +121,9 @@ function renderProducts(selected=matchedProduct?.id || "") {
   renderActions();
 }
 function savedAffiliateForSource(product) {
-  return product?.offers?.find(offer=>{
-    try {
-      const host=new URL(offer.url).hostname.toLowerCase();
-      return captured?.source==="amazon" ? host==="amzn.to" || host==="amazon.com.br" || host.endsWith(".amazon.com.br") : host==="meli.la" || host==="mercadolivre.com.br" || host.endsWith(".mercadolivre.com.br") || host==="mercadolivre.com" || host.endsWith(".mercadolivre.com");
-    } catch {return false;}
-  });
+  const page=captured?.pageUrl || "";
+  const identity=captured?.source==="amazon" ? page.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i)?.[1].toUpperCase() : page.replaceAll("-", "").match(/MLB\d+/i)?.[0].toUpperCase();
+  return product?.offers?.find(offer=>identity && (offer.externalId?.replace(/^item-/, "")===identity || offer.url===page || offer.url.replaceAll("-", "").includes(identity)));
 }
 function renderActions() {
   const product=products.get(productSelect.value);
@@ -134,12 +131,23 @@ function renderActions() {
   document.querySelector("#import").hidden=Boolean(product);
   document.querySelector("#mark-unavailable").hidden=!(product && (exact || savedAffiliateForSource(product)));
   for(const id of ["import","update-price","update-full","save-offer"])document.querySelector(`#${id}`).disabled=captured?.price==null;
-  document.querySelector("#update-price").hidden=!product;
+  document.querySelector("#update-price").hidden=!(product && savedAffiliateForSource(product));
   document.querySelector("#update-full").hidden=!product;
   document.querySelector("#save-offer").hidden=!product;
   document.querySelector("#update-help").hidden=!product;
   document.querySelector("#category").disabled=Boolean(product);
   document.querySelector("#search-controls").hidden=Boolean(matchedProduct);
+  const offerList=document.querySelector("#existing-offers");
+  offerList.replaceChildren();
+  if(product) {
+    const heading=document.createElement("strong");heading.textContent=`${product.offers.length} oferta(s) cadastrada(s)`;offerList.append(heading);
+    for(const offer of [...product.offers].sort((a,b)=>(a.price ?? Infinity)-(b.price ?? Infinity))) {
+      const row=document.createElement("p");
+      const link=document.createElement("a");link.href=offer.url;link.target="_blank";link.rel="noopener noreferrer";
+      link.textContent=`${/amazon|amzn/i.test(offer.url)?"Amazon":"Mercado Livre"} · ${offer.price===null?"Consultar preço":new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(offer.price)}`;
+      row.append(link);offerList.append(row);
+    }
+  }
   const affiliate=document.querySelector("#affiliate");
   affiliate.placeholder=(exact || savedAffiliateForSource(product))?"Deixe vazio para manter o afiliado cadastrado":"https://meli.la/… ou https://amzn.to/…";
   if(captured?.price==null && product && status.textContent==="Cole o link de afiliado, escolha a categoria e importe.")status.textContent="Preço não disponível. Confira se a ficha selecionada corresponde ao anúncio e use Marcar oferta como indisponível.";
@@ -174,7 +182,7 @@ async function identifyProduct() {
   renderProducts(matchedProduct?.id || suggested?.id || "");
   if(!document.querySelector("#search").value)document.querySelector("#search").value=snapshot.name;
   document.querySelector("#search-controls").open=false;
-  document.querySelector("#match-status").textContent=matchedProduct?`Já cadastrado: ${matchedProduct.name}. Escolha o que deseja atualizar.`:suggested?`Possível produto já cadastrado: ${suggested.name}. Confira modelo, capacidade e versão. Atualizar apenas o preço mantém o afiliado salvo nesta loja; para adicionar uma nova loja, informe o afiliado.`:"Nenhum produto equivalente encontrado automaticamente. Você pode importar um novo produto ou abrir a busca abaixo.";
+  document.querySelector("#match-status").textContent=matchedProduct?`Já cadastrado: ${matchedProduct.name}. Escolha o que deseja atualizar.`:suggested?`Possível produto já cadastrado: ${suggested.name}. Confira modelo, capacidade e versão. Para adicionar este anúncio como outra oferta, informe o link de afiliado. As ofertas já cadastradas serão mantidas.`:"Nenhum produto equivalente encontrado automaticamente. Você pode importar um novo produto ou abrir a busca abaixo.";
   persistDraft();
 }
 async function searchProducts() {

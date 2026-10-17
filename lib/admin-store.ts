@@ -20,7 +20,7 @@ function specDocument(spec: AdminSpec) {
   const display = spec.type === "bool" ? valueBool === null ? "—" : valueBool ? "Sim" : "Não" : spec.type === "number" ? number === null ? "—" : `${number.toLocaleString("pt-BR", { maximumFractionDigits: 12 })}${spec.unit ? ` ${spec.unit}` : ""}` : spec.value || "—";
   return { keySlug: spec.slug, name: spec.name, group: spec.group, type: spec.type, unit: spec.unit, order: spec.order, higherIsBetter: spec.higherIsBetter, value_number: number, value_text: spec.type === "text" ? spec.value : "", value_bool: valueBool, display };
 }
-export async function saveAdminProduct(db: Firestore, actor: { uid: string; email?: string }, value: unknown, creating: boolean, now = Date.now(), importSource?: { key: string; externalId: string; storeId: string; priceCondition?: "pix"|"standard" }) {
+export async function saveAdminProduct(db: Firestore, actor: { uid: string; email?: string }, value: unknown, creating: boolean, now = Date.now(), importSource?: { key: string; externalId: string; storeId: string; offerId: string; priceCondition?: "pix"|"standard" }) {
   const input = validateAdminProduct(value);
   const ref = db.collection("products").doc(input.id);
   const audit = db.collection("adminAudit").doc();
@@ -40,8 +40,8 @@ export async function saveAdminProduct(db: Firestore, actor: { uid: string; emai
     const offers = input.offers.map((offer, index) => {
       const store = references[index + 1];
       if (!store.exists) throw new AdminError("Uma das lojas não está cadastrada.");
-      const previous = (Array.isArray(old.offers) ? old.offers : []).find((item: Record<string, unknown>) => String(item.storeId ?? item.store) === offer.storeId);
-      return { ...previous, ...(importSource?.storeId === offer.storeId && importSource.priceCondition ? {priceCondition:importSource.priceCondition} : {}), ...((importSource?.storeId === offer.storeId) || (offer.price!==null && (previous?.priceCents !== Math.round(offer.price*100) || previous?.url !== offer.url)) ? {priceCheckedAt: Timestamp.fromMillis(now)} : {}), ...(importSource?.storeId === offer.storeId ? { external_id: importSource.externalId } : { external_id: offer.externalId ?? (previous?.url === offer.url ? previous?.external_id ?? "" : "") }), id: previous?.id ?? offer.id, storeId: offer.storeId, store: store.data()!.legacyId ?? store.id, storeName: string(store.data()!.name), url: offer.url, priceCents: offer.price === null ? null : Math.round(offer.price * 100), price: offer.price, is_available: offer.available, currency: "BRL" };
+      const previous = (Array.isArray(old.offers) ? old.offers : []).find((item: Record<string, unknown>) => String(item.id) === offer.id && String(item.storeId ?? item.store) === offer.storeId);
+      return { ...previous, ...(importSource?.offerId === offer.id && importSource.priceCondition ? {priceCondition:importSource.priceCondition} : {}), ...((importSource?.offerId === offer.id) || (offer.price!==null && (previous?.priceCents !== Math.round(offer.price*100) || previous?.url !== offer.url)) ? {priceCheckedAt: Timestamp.fromMillis(now)} : {}), ...(importSource?.offerId === offer.id ? { external_id: importSource.externalId } : { external_id: offer.externalId ?? (previous?.url === offer.url ? previous?.external_id ?? "" : "") }), id: previous?.id ?? offer.id, storeId: offer.storeId, store: store.data()!.legacyId ?? store.id, storeName: string(store.data()!.name), url: offer.url, priceCents: offer.price === null ? null : Math.round(offer.price * 100), price: offer.price, is_available: offer.available, currency: "BRL" };
     });
     const prices = offers.filter(offer => offer.is_available && offer.priceCents !== null).map(offer => offer.priceCents!);
     const date = new Date(now).toISOString();
@@ -49,8 +49,8 @@ export async function saveAdminProduct(db: Firestore, actor: { uid: string; emai
     if (creating) tx.create(ref, patch); else tx.set(ref, patch, { merge: true });
     if (source && importSource) tx.set(source, { productId: input.id, externalId: importSource.externalId, updatedAt: Timestamp.fromMillis(now) });
     for (const offer of offers) {
-      const previous = (Array.isArray(old.offers) ? old.offers : []).find((item: Record<string, unknown>) => String(item.storeId ?? item.store) === offer.storeId);
-      if (offer.is_available && offer.priceCents !== null && (previous?.priceCents !== offer.priceCents)) tx.create(db.collection("priceHistory").doc(), { productSlug: input.id, storeId: offer.storeId, store: offer.store, priceCents: offer.priceCents, price: offer.price, priceCondition: offer.priceCondition ?? "standard", recorded_at: date, source: "admin" });
+      const previous = (Array.isArray(old.offers) ? old.offers : []).find((item: Record<string, unknown>) => String(item.id) === offer.id && String(item.storeId ?? item.store) === offer.storeId);
+      if (offer.is_available && offer.priceCents !== null && (previous?.priceCents !== offer.priceCents || importSource?.offerId === offer.id)) tx.create(db.collection("priceHistory").doc(), { productSlug: input.id, offerId: offer.id, storeId: offer.storeId, store: offer.store, priceCents: offer.priceCents, price: offer.price, priceCondition: offer.priceCondition ?? "standard", recorded_at: date, source: "admin" });
     }
     tx.create(audit, { action: importSource ? "product.import" : creating ? "product.create" : "product.update", productId: input.id, name: input.name, actorUid: actor.uid, actorEmail: actor.email ?? "", createdAt: Timestamp.fromMillis(now), beforeActive: creating ? null : old.isActive === true, afterActive: input.isActive });
     return adminProductFromData(input.id, { ...old, ...patch });

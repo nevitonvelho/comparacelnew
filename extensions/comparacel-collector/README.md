@@ -123,3 +123,9 @@ Os resultados exibem uma etiqueta compacta sobre a imagem, sem aumentar a altura
 ### Coleta 1.3.3
 
 Páginas de produto /up/MLBU… passam pela coleta normal, em vez de serem confundidas com buscas. Os links abertos pelas etiquetas preservam os parâmetros e fragmentos originais para manter a identificação do anúncio.
+
+### Ofertas 1.4.0
+
+Selecione a ficha sugerida por semelhança ou busque por nome/modelo. Confira capacidade, cor e voltagem antes de vincular. Cole o link de afiliado e use **Adicionar / atualizar este anúncio e afiliado**. Repita para quantos anúncios precisar, inclusive vários da Amazon ou Mercado Livre (até 50 ofertas por produto). A lista mostra os preços em ordem crescente. Atualizar apenas o preço e marcar indisponível atuam somente no anúncio identificado; outros links são preservados.
+
+O histórico público reúne as lojas em uma curva de mínimos diários observados. As médias de 30/90/180 dias exigem ao menos sete dias observados com intervalo de 14 dias; dias sem consulta não são estimados. Atualizações confirmadas são registradas mesmo quando o preço permanece igual.

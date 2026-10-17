@@ -37,7 +37,7 @@ try {
     assert.equal(await badge.getAttribute('aria-expanded'),'false');
     assert.match(await page.locator('[data-state="exact"]').textContent(),/anúncio já cadastrado/);
     assert.match(await page.locator('[data-state="suggestion"]').textContent(),/possível produto cadastrado/);
-    if(source==='mercadolivre')assert.match(await page.locator('[data-state="suggestion"]').textContent(),/Pode adicionar Mercado Livre/);
+    if(source==='mercadolivre')assert.match(await page.locator('[data-state="suggestion"]').textContent(),/Pode adicionar outro anúncio de Mercado Livre/);
     await page.evaluate(html=>document.body.insertAdjacentHTML('beforeend',html),card(ids[2],'Outro produto'));
     await page.waitForFunction(()=>document.querySelectorAll('.comparacel-listing:not(.comparacel-search-status)[data-state]').length===3);
     assert.equal(await page.evaluate(()=>calls),2);

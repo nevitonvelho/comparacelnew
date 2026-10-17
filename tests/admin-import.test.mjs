@@ -40,7 +40,7 @@ test('parsers extract real product data without inventing prices or comparative 
 test('import updates preserve manual edits, publication, images, offers and editorial scores', () => {
   const spec = inferImportSpec('Potência', '1200 W');
   const collected = {name:'Nome remoto',brand:'Remota',description:'Descrição remota',price:null,specs:[spec],externalId:'B012345678',buyUrl:'https://amzn.to/abc'};
-  const existing = {id:'ficha-original',revision:3,name:'Nome manual',description:'Descrição manual',brandId:'manual',category:'cafeteiras',imageUrl:'existing',isActive:true,overallScore:8,metaTitle:'SEO manual',metaDescription:'Desc SEO',specs:[{...spec,value:'1000',higherIsBetter:true}],offers:[{id:'oferta',storeId:'amazon',price:99,url:'old',available:true},{id:'outra',storeId:'outra',price:110,url:'other',available:true}],highlights:[{kind:'pro',text:'Manual'}]};
+  const existing = {id:'ficha-original',revision:3,name:'Nome manual',description:'Descrição manual',brandId:'manual',category:'cafeteiras',imageUrl:'existing',isActive:true,overallScore:8,metaTitle:'SEO manual',metaDescription:'Desc SEO',specs:[{...spec,value:'1000',higherIsBetter:true}],offers:[{id:'oferta',storeId:'amazon',externalId:'B012345678',price:99,url:'old',available:true},{id:'outra',storeId:'outra',price:110,url:'other',available:true}],highlights:[{kind:'pro',text:'Manual'}]};
   const merged = mergeImportedProduct(collected, existing, 'celulares','remota','amazon','new-image');
   assert.equal(merged.id,'ficha-original');assert.equal(merged.category,'cafeteiras');assert.equal(merged.name,'Nome manual');assert.equal(merged.imageUrl,'existing');assert.equal(merged.isActive,true);assert.equal(merged.specs[0].value,'1000');assert.equal(merged.specs[0].higherIsBetter,true);assert.equal(merged.offers.find(offer=>offer.storeId==='amazon').price,99);assert.equal(merged.offers.length,2);assert.equal(merged.overallScore,8);
   assert.equal(mergeImportedProduct(collected,null,'cafeteiras','marca','amazon','').isActive,false);
@@ -252,7 +252,7 @@ test('extension price-only updates preserve affiliate, specifications and other 
   assert.deepEqual({...result,offers:existing.offers},existing);
   assert.deepEqual(result.offers.find(offer=>offer.storeId==='amazon'),{...existing.offers[0],price:90,available:true});
   assert.deepEqual(result.offers.find(offer=>offer.storeId==='mercado-livre'),existing.offers[1]);
-  assert.equal(mergeImportedProduct(collected,{...existing,offers:[]},'outro','marca','amazon','','price').offers[0].price,90);
+  assert.throws(()=>mergeImportedProduct(collected,{...existing,offers:[]},'outro','marca','amazon','','price'),/ainda não está vinculado/);
 });
 test('extension attaches the other store without changing the product; full refresh replaces collected fields', () => {
   const existing={id:'produto',revision:2,name:'Manual',description:'Manual',brandId:'marca',category:'celulares',imageUrl:'old',isActive:true,overallScore:8,metaTitle:'SEO',metaDescription:'SEO',specs:[inferImportSpec('Memória','128 GB'),inferImportSpec('Cor','Azul')],offers:[{id:'amazon',storeId:'amazon',price:100,url:'https://amzn.to/owner',available:true}],highlights:[{kind:'pro',text:'Manual'}]};
@@ -263,4 +263,15 @@ test('extension attaches the other store without changing the product; full refr
   assert.equal(full.name,'Remote');assert.equal(full.description,'Remote');assert.equal(full.brandId,'remote');assert.equal(full.imageUrl,'new');assert.equal(full.specs[0].value,'256');assert.equal(full.specs[1].value,'Azul');
   assert.equal(full.category,existing.category);assert.equal(full.isActive,true);assert.equal(full.overallScore,8);assert.equal(full.metaTitle,'SEO');assert.deepEqual(full.highlights,existing.highlights);assert.deepEqual(full.offers[0],existing.offers[0]);
   assert.equal(mergeImportedProduct(collected,existing,'outro','remote','mercado-livre','','full').imageUrl,'old');
+});
+
+test('many same-marketplace announcements append without replacing links and update by identity',()=>{
+ const collected={name:'Produto',brand:'Marca',description:'',price:90,specs:[],externalId:'B000000002',buyUrl:'https://amzn.to/second'};
+ const existing={id:'produto',revision:0,name:'Manual',description:'',brandId:'marca',category:'celulares',imageUrl:'',isActive:true,overallScore:0,metaTitle:'',metaDescription:'',specs:[],highlights:[],offers:[{id:'first',storeId:'amazon',externalId:'B000000001',price:100,url:'https://amzn.to/first',available:true}]};
+ const added=mergeImportedProduct(collected,existing,'celulares','marca','amazon','','offer');
+ assert.equal(added.offers.length,2);assert.deepEqual(added.offers[0],existing.offers[0]);assert.notEqual(added.offers[0].id,added.offers[1].id);
+ const updated=mergeImportedProduct({...collected,price:80,buyUrl:'https://www.amazon.com.br/dp/B000000002'},added,'celulares','marca','amazon','','price');
+ assert.equal(updated.offers.length,2);assert.deepEqual(updated.offers[0],existing.offers[0]);assert.equal(updated.offers[1].url,'https://amzn.to/second');assert.equal(updated.offers[1].price,80);
+ const unavailable=mergeImportedProduct({...collected,price:null},updated,'celulares','marca','amazon','','unavailable');
+ assert.equal(unavailable.offers[0].available,true);assert.equal(unavailable.offers[1].available,false);
 });

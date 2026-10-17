@@ -58,7 +58,7 @@ export async function searchExtensionProducts(db: Firestore, query: string) {
     .slice(0,30).map(match=>extensionProductSummary(match.product));
 }
 export function extensionProductSummary(product: AdminProduct) {
-  return {id: product.id, name: product.name, category: product.category, offers: product.offers.map(offer => ({storeId: offer.storeId, externalId: offer.externalId, url: offer.url, price: offer.price})), editPath: `/admin?produto=${encodeURIComponent(product.id)}`};
+  return {id: product.id, name: product.name, category: product.category, offers: product.offers.map(offer => ({id: offer.id, storeId: offer.storeId, externalId: offer.externalId, url: offer.url, price: offer.price})), editPath: `/admin?produto=${encodeURIComponent(product.id)}`};
 }
 
 export async function lookupExtensionListing(db: Firestore, source: ImportSource, entries: {pageUrl: string; name: string}[]) {
@@ -87,6 +87,12 @@ function productNameTokens(value: string) {
   return [...new Set(normalized.split(" ").filter(word=>word.length>1 && !ignored.has(word)).map(word=>word.replace(/^un(\d{2})([a-z]\d{4}[a-z])[a-z0-9]*$/, "$1pol $2").replace(/litros$/, "l").replace(/volts$/, "v").replace(/watts$/, "w").replace(/polegadas$/, "pol")).flatMap(word=>word.split(" ")))];
 }
 export function extensionProductSimilarity(pageName: string, productName: string) {
+  const iphoneVariant=(value:string)=>{
+    const match=value.toLowerCase().match(/\biphone\s*(\d{1,2})(e)?(?:\s+(pro\s+max|pro|plus|mini))?\b/);
+    return match ? `${match[1]}${match[2] ?? ""}:${match[3]?.replace(/\s+/g," ") ?? "standard"}` : null;
+  };
+  const pageVariant=iphoneVariant(pageName),productVariant=iphoneVariant(productName);
+  if(pageVariant && productVariant && pageVariant!==productVariant)return 0;
   const page=productNameTokens(pageName);const product=productNameTokens(productName);
   if(page.length<2 || product.length<2)return 0;
   const shared=page.filter(word=>product.includes(word));
@@ -137,7 +143,7 @@ export function extensionPriceQueue(products: AdminProduct[], now = Date.now()) 
 
 export function validateExtensionBatchOffer(product: AdminProduct | null, source: "amazon" | "mercadolivre", identity: string, input: Record<string, unknown>) {
   if (!["price", "unavailable"].includes(String(input.mode)) || !product || typeof input.storeId !== "string" || typeof input.offerUrl !== "string") throw new AdminError("Lote inválido.");
-  const offer = product.offers.find(offer => offer.storeId === input.storeId);
+  const offer = product.offers.find(offer => offer.storeId === input.storeId && offer.url === input.offerUrl);
   if (!offer || offer.url !== input.offerUrl || !offerBelongsToSource(offer, source) || !offerMatchesIdentity(offer, source, identity)) {
     throw new AdminError("O anúncio não corresponde à oferta cadastrada. Revise no painel.", 409);
   }

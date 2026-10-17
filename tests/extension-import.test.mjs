@@ -137,7 +137,7 @@ function routeFixture() {
   db.runTransaction=async run=>run({get:async()=>({data:()=>({})}),set:()=>{},update:()=>{}});
   globalThis.extensionRoute={db,persist:async(_db,_actor,source,collected,existing,category,image,mode)=>{
     const product=mergeImportedProduct(collected,existing,category,'marca',source==='amazon'?'amazon':'mercado-livre',image,mode);
-    product.offers.find(offer=>offer.storeId===(source==='amazon'?'amazon':'mercado-livre')).externalId=collected.externalId;
+    product.offers.find(offer=>offer.externalId===collected.externalId).externalId=collected.externalId;
     records[product.id]=product;return {product,created:!existing};
   }};
   return {record,records};
@@ -245,9 +245,9 @@ test('indisponibilidade sem preço preserva afiliado, último preço e outras lo
   assert.equal(records.lavadora.offers[0].available,true);
 });
 
-test('price action can attach a selected cross-store offer without replacing product fields',async()=>{
+test('offer action attaches a selected cross-store offer without replacing product fields',async()=>{
   const {record,records}=routeFixture();
-  const result=await sendExtension({capture,mode:'price',productId:'lavadora',affiliateUrl:'https://meli.la/owner'});
+  const result=await sendExtension({capture,mode:'offer',productId:'lavadora',affiliateUrl:'https://meli.la/owner'});
   assert.equal(result.status,200);
   assert.equal(records.lavadora.name,record.name);
   assert.equal(records.lavadora.description,record.description);
@@ -258,29 +258,17 @@ test('price action can attach a selected cross-store offer without replacing pro
   assert.equal(records.lavadora.offers[1].price,capture.price);
 });
 
-test('price update reuses the saved store affiliate even when the selected listing ID differs',async()=>{
+test('another advertisement cannot update or disable an existing same-store offer',async()=>{
   const {record,records}=routeFixture();
   record.offers.push({id:'ml',storeId:'mercado-livre',externalId:'MLB11111111',url:'https://meli.la/owner',price:90,available:true});
-  const amazon={...record.offers[0]};
-  const result=await sendExtension({capture,mode:'price',productId:'lavadora',affiliateUrl:''});
-  assert.equal(result.status,200);
-  assert.equal(records.lavadora.offers.find(offer=>offer.storeId==='mercado-livre').url,'https://meli.la/owner');
-  assert.equal(records.lavadora.offers.find(offer=>offer.storeId==='mercado-livre').price,capture.price);
-  assert.deepEqual(records.lavadora.offers.find(offer=>offer.storeId==='amazon'),amazon);
-  assert.equal(records.lavadora.name,'Manual');
-});
-
-test('unavailable action accepts a selected same-store offer with a different listing ID and preserves other stores',async()=>{
-  const {record,records}=routeFixture();
-  record.offers.push({id:'ml',storeId:'mercado-livre',externalId:'MLB11111111',url:'https://meli.la/owner',price:90,available:true});
-  const amazon={...record.offers[0]};
-  const result=await sendExtension({capture:{...capture,price:null},mode:'unavailable',productId:'lavadora'});
-  assert.equal(result.status,200);
-  const offer=records.lavadora.offers.find(offer=>offer.storeId==='mercado-livre');
-  assert.equal(offer.available,false);assert.equal(offer.price,90);assert.equal(offer.url,'https://meli.la/owner');
-  assert.deepEqual(records.lavadora.offers.find(offer=>offer.storeId==='amazon'),amazon);
-  routeFixture();
+  const before=structuredClone(records.lavadora);
+  assert.equal((await sendExtension({capture,mode:'price',productId:'lavadora'})).status,400);
   assert.equal((await sendExtension({capture:{...capture,price:null},mode:'unavailable',productId:'lavadora'})).status,400);
+  assert.deepEqual(records.lavadora,before);
+  const added=await sendExtension({capture,mode:'offer',productId:'lavadora',affiliateUrl:'https://meli.la/second'});
+  assert.equal(added.status,200);
+  assert.equal(records.lavadora.offers.length,3);
+  assert.deepEqual(records.lavadora.offers.slice(0,2),before.offers);
 });
 
 test('product suggestions distinguish colors of the same model and handle legacy graphite spelling',()=>{
@@ -344,4 +332,16 @@ test('sponsored tracking URLs provide suggestions without claiming an exact matc
   const db=productDatabase({midea:{name:'Ar Condicionado Midea Inverter 9000 BTU 220V',category:'ar-condicionado',offers:[{storeId:'amazon',url:'https://amzn.to/owner',externalId:'B012345678'}]}});
   const [result]=await lookupExtensionListing(db,'mercadolivre',[{pageUrl:'https://click1.mercadolivre.com.br/mclics/clicks?tracking=123',name:'Ar Condicionado Midea Inverter 9000 BTU 220V'}]);
   assert.equal(result.product,null);assert.equal(result.suggestions[0].id,'midea');
+});
+
+test('similarity never suggests a different iPhone generation or edition',()=>{
+ assert.equal(extensionProductSimilarity('Apple iPhone 16 128GB Preto','Apple iPhone 15 128GB Preto'),0);
+ assert.equal(extensionProductSimilarity('Apple iPhone 16 128GB Preto','Apple iPhone 16e 128GB Preto'),0);
+ assert.equal(extensionProductSimilarity('Apple iPhone 16 Pro 128GB Preto','Apple iPhone 16 Pro Max 128GB Preto'),0);
+ assert.ok(extensionProductSimilarity('Apple iPhone 16 128 GB Preto','iPhone 16 Preto 128GB Apple')>0);
+});
+test('batch can address the second announcement from the same marketplace',()=>{
+ const offers=[{id:'one',storeId:'amazon',url:'https://amzn.to/one',externalId:'B000000001'},{id:'two',storeId:'amazon',url:'https://amzn.to/two',externalId:'B000000002'}];
+ validateExtensionBatchOffer({offers},'amazon','B000000002',{mode:'price',storeId:'amazon',offerUrl:offers[1].url});
+ assert.throws(()=>validateExtensionBatchOffer({offers},'amazon','B000000002',{mode:'price',storeId:'amazon',offerUrl:offers[0].url}));
 });

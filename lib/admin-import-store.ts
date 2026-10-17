@@ -25,15 +25,23 @@ export async function findImportProduct(db: Firestore, source: ImportSource, col
 }
 export type ExtensionUpdateMode = "import" | "price" | "full" | "offer" | "unavailable";
 export function mergeImportedProduct(collected: CollectedProduct, existing: AdminProduct | null, category: string, brandId: string, storeId: string, imageUrl: string, mode: ExtensionUpdateMode = "import"): AdminProduct {
+  // An announcement is an offer; a marketplace can have many announcements.
+  const previousOffer = existing?.offers.find(offer => offer.storeId === storeId && (
+    offer.externalId === collected.externalId || offer.url === collected.buyUrl ||
+    offer.url.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i)?.[1].toUpperCase() === collected.externalId ||
+    (collected.externalId.startsWith("item-") ? /^https?:\/\/produto\./.test(offer.url) : !/^https?:\/\/produto\./.test(offer.url)) && offer.url.replaceAll("-", "").match(/MLB\d+/i)?.[0].toUpperCase() === collected.externalId.replace(/^item-/, "")
+  ));
+  if ((mode === "price" || mode === "unavailable") && !previousOffer) throw new AdminError("Este anúncio ainda não está vinculado. Use Adicionar oferta e informe o link de afiliado.");
+  const offerId = previousOffer?.id ?? `offer-${storeId}-${collected.externalId}`;
   if(mode === "unavailable") {
-    const previous=existing?.offers.find(offer=>offer.storeId===storeId);
+    const previous=previousOffer;
     if(!existing || !previous)throw new AdminError("Este anúncio precisa estar vinculado ao produto.");
-    return {...existing,offers:existing.offers.map(offer=>offer.storeId===storeId?{...offer,available:false}:offer)};
+    return {...existing,offers:existing.offers.map(offer=>offer.id===offerId?{...offer,externalId:collected.externalId,available:false}:offer)};
   }
   if (existing && (mode === "price" || mode === "offer")) {
-    const previous = existing.offers.find(offer => offer.storeId === storeId);
-    const offer = mode === "price" && previous ? {...previous, price: collected.price, available:true} : {id: previous?.id ?? `store-${storeId}`, storeId, price: collected.price, url: collected.buyUrl, available: true};
-    return {...existing, offers: [...existing.offers.filter(offer => offer.storeId !== storeId), offer]};
+    const previous = previousOffer;
+    const offer = mode === "price" && previous ? {...previous, externalId: collected.externalId, price: collected.price, available:true} : {id: offerId, storeId, externalId: collected.externalId, price: collected.price, url: collected.buyUrl, available: true};
+    return {...existing, offers: [...existing.offers.filter(offer => offer.id !== offerId), offer]};
   }
   const specs = [...(existing?.specs ?? [])];
   for (const spec of collected.specs) if (!specs.some(item => item.group === spec.group && item.slug === spec.slug) && specs.length < 200) specs.push({ ...spec, order: specs.length });
@@ -41,16 +49,15 @@ export function mergeImportedProduct(collected: CollectedProduct, existing: Admi
     const index = specs.findIndex(item => item.group === spec.group && item.slug === spec.slug);
     if (index >= 0) specs[index] = {...spec, order: specs[index].order, higherIsBetter: specs[index].higherIsBetter};
   }
-  const previousOffer = existing?.offers.find(offer => offer.storeId === storeId);
-  const offer = { id: `store-${storeId}`, storeId, price: collected.price ?? previousOffer?.price ?? null, url: collected.buyUrl, available: true };
+  const offer = { id: offerId, externalId: collected.externalId, storeId, price: collected.price ?? previousOffer?.price ?? null, url: collected.buyUrl, available: true };
   const refreshed = mode === "full" ? {name: collected.name, description: collected.description || existing?.description || "", brandId, imageUrl: imageUrl || existing?.imageUrl || ""} : {};
-  return { id: existing?.id ?? `${slugify(collected.name).slice(0, 180).replace(/-$/, "")}-${collected.externalId.toLowerCase()}`, revision: existing?.revision ?? 0, name: existing?.name ?? collected.name, description: existing?.description || collected.description, brandId: existing?.brandId || brandId, category: existing?.category ?? category, imageUrl: existing?.imageUrl || imageUrl, isActive: existing?.isActive ?? false, overallScore: existing?.overallScore ?? 0, metaTitle: existing?.metaTitle ?? "", metaDescription: existing?.metaDescription ?? "", specs, offers: [...(existing?.offers.filter(item => item.storeId !== storeId) ?? []), offer], highlights: existing?.highlights.length ? existing.highlights : collected.highlights ?? [], ...refreshed };
+  return { id: existing?.id ?? `${slugify(collected.name).slice(0, 180).replace(/-$/, "")}-${collected.externalId.toLowerCase()}`, revision: existing?.revision ?? 0, name: existing?.name ?? collected.name, description: existing?.description || collected.description, brandId: existing?.brandId || brandId, category: existing?.category ?? category, imageUrl: existing?.imageUrl || imageUrl, isActive: existing?.isActive ?? false, overallScore: existing?.overallScore ?? 0, metaTitle: existing?.metaTitle ?? "", metaDescription: existing?.metaDescription ?? "", specs, offers: [...(existing?.offers.filter(item => item.id !== offerId) ?? []), offer], highlights: existing?.highlights.length ? existing.highlights : collected.highlights ?? [], ...refreshed };
 }
 export async function persistImportedProduct(db: Firestore, actor: { uid: string; email?: string }, source: ImportSource, collected: CollectedProduct, existing: AdminProduct | null, category: string, imageUrl: string, mode: ExtensionUpdateMode = "import", targetStoreId?: string) {
   if (targetStoreId && (!["price", "unavailable"].includes(mode) || !existing?.offers.some(offer => offer.storeId === targetStoreId))) throw new AdminError("Oferta do lote inválida.");
   const brandId = (mode !== "full" && existing?.brandId) || await ensureImportReference(db, actor, "brands", collected.brand);
   const storeId = targetStoreId ?? await ensureImportReference(db, actor, "stores", source === "amazon" ? "Amazon" : "Mercado Livre");
   const input = mergeImportedProduct(collected, existing, category, brandId, storeId, imageUrl, mode);
-  const product = await saveAdminProduct(db, actor, input, !existing, Date.now(), { key: `${source}-${collected.externalId}`, externalId: collected.externalId, storeId, priceCondition:collected.priceCondition ?? "standard" });
+  const product = await saveAdminProduct(db, actor, input, !existing, Date.now(), { key: `${source}-${collected.externalId}`, externalId: collected.externalId, storeId, offerId: input.offers.find(offer => offer.storeId === storeId && offer.externalId === collected.externalId)!.id, priceCondition:collected.priceCondition ?? "standard" });
   return { product, created: !existing };
 }

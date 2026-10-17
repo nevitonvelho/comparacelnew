@@ -116,7 +116,7 @@ test('refresh only changes selected offer, keeps affiliate and records changed p
 });
 
 test('replacement source identifiers survive validation and reject invalid identifiers',()=>{
- const offer={storeId:'amazon',price:10,url:'https://www.amazon.com.br/dp/B0F48L2CZS',available:true,externalId:'B0F48L2CZS'};
+ const offer={id:'amazon-offer',storeId:'amazon',price:10,url:'https://www.amazon.com.br/dp/B0F48L2CZS',available:true,externalId:'B0F48L2CZS'};
  assert.equal(validateAdminProduct({...product,offers:[offer]}).offers[0].externalId,'B0F48L2CZS');
  assert.equal(validateAdminProduct({...product,offers:[{...offer,externalId:'item-MLB5210551559'}]}).offers[0].externalId,'item-MLB5210551559');
  assert.throws(()=>validateAdminProduct({...product,offers:[{...offer,externalId:'../bad'}]}));
@@ -163,7 +163,28 @@ test('marking a source unavailable records its check date even without a price',
  let data={adminRevision:0,name:'Teste',offers:[{id:'a',storeId:'amazon',url:'https://amzn.to/owner',priceCents:null,is_available:true}]};
  const histories=[];
  const db={collection:kind=>({doc:id=>({kind,id}),where:()=>({limit:()=>({query:true})})}),runTransaction:async run=>run({get:async ref=>ref.query?{empty:false,docs:[{id:'category',data:()=>({})}]}:{exists:ref.kind==='products',data:()=>data},getAll:async(...refs)=>refs.map(ref=>({exists:true,id:ref.id,data:()=>({name:ref.id})})),set:(ref,patch)=>{if(ref.kind==='products')data={...data,...patch};},create:(ref,value)=>{if(ref.kind==='priceHistory')histories.push(value);}})};
- await saveAdminProduct(db,account,{...product,offers:[{id:'a',storeId:'amazon',url:'https://amzn.to/owner',price:null,available:false}]},false,10000,{key:'amazon-B012345678',externalId:'B012345678',storeId:'amazon'});
+ await saveAdminProduct(db,account,{...product,offers:[{id:'a',storeId:'amazon',url:'https://amzn.to/owner',price:null,available:false}]},false,10000,{key:'amazon-B012345678',externalId:'B012345678',storeId:'amazon',offerId:'a'});
  assert.equal(data.offers[0].priceCheckedAt.toMillis(),10000);
  assert.equal(data.offers[0].is_available,false);assert.equal(data.offers[0].priceCents,null);assert.equal(histories.length,0);
+});
+
+test('same-store offers retain independent IDs and reject duplicated links or announcements',()=>{
+ const first={id:'one',storeId:'amazon',price:100,url:'https://amzn.to/first',available:true,externalId:'B000000001'};
+ const second={...first,id:'two',url:'https://amzn.to/second',externalId:'B000000002'};
+ assert.deepEqual(validateAdminProduct({...product,offers:[first,second]}).offers.map(offer=>offer.id),['one','two']);
+ assert.throws(()=>validateAdminProduct({...product,offers:[first,{...second,id:first.id}]}));
+ assert.throws(()=>validateAdminProduct({...product,offers:[first,{...second,url:first.url}]}));
+ assert.throws(()=>validateAdminProduct({...product,offers:[first,{...second,externalId:first.externalId}]}));
+});
+
+test('importing a second same-store offer scopes identity, payment condition and history to that offer',async()=>{
+ let data={adminRevision:0,name:'Teste',offers:[{id:'first',storeId:'amazon',url:'https://amzn.to/first',external_id:'B000000001',priceCents:10000,is_available:true,priceCondition:'standard'}]};
+ const histories=[];
+ const db={collection:kind=>({doc:id=>({kind,id}),where:()=>({limit:()=>({query:true})})}),runTransaction:async run=>run({get:async ref=>ref.query?{empty:false,docs:[{id:'category',data:()=>({})}]}:{exists:ref.kind==='products',data:()=>data},getAll:async(...refs)=>refs.map(ref=>({exists:true,id:ref.id,data:()=>({name:ref.id})})),set:(ref,patch)=>{if(ref.kind==='products')data={...data,...patch};},create:(ref,value)=>{if(ref.kind==='priceHistory')histories.push(value);}})};
+ const first={id:'first',storeId:'amazon',url:'https://amzn.to/first',externalId:'B000000001',price:100,available:true};
+ const second={id:'second',storeId:'amazon',url:'https://amzn.to/second',externalId:'B000000002',price:90,available:true};
+ await saveAdminProduct(db,account,{...product,offers:[first,second]},false,10000,{key:'amazon-B000000002',externalId:'B000000002',storeId:'amazon',offerId:'second',priceCondition:'pix'});
+ assert.equal(data.offers[0].external_id,'B000000001');assert.equal(data.offers[0].priceCondition,'standard');assert.equal(data.offers[0].priceCheckedAt,undefined);
+ assert.equal(data.offers[1].external_id,'B000000002');assert.equal(data.offers[1].priceCondition,'pix');assert.equal(data.offers[1].priceCheckedAt.toMillis(),10000);
+ assert.equal(data.bestPriceCents,9000);assert.equal(histories.length,1);assert.equal(histories[0].offerId,'second');
 });
