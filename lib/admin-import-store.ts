@@ -28,6 +28,7 @@ export function mergeImportedProduct(collected: CollectedProduct, existing: Admi
   // An announcement is an offer; a marketplace can have many announcements.
   const previousOffer = existing?.offers.find(offer => offer.storeId === storeId && (
     offer.externalId === collected.externalId || offer.url === collected.buyUrl ||
+    (/^SHP/.test(collected.externalId) && (()=>{try{const url=new URL(offer.url);const match=url.pathname.match(/^\/product\/(\d+)\/(\d+)(?:\/|$)/) ?? url.pathname.match(/-i\.(\d+)\.(\d+)(?:\/|$)/);return ["shopee.com.br","www.shopee.com.br"].includes(url.hostname) && match && `SHP${match[1]}-${match[2]}`===collected.externalId;}catch{return false;}})()) ||
     offer.url.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i)?.[1].toUpperCase() === collected.externalId ||
     (collected.externalId.startsWith("item-") ? /^https?:\/\/produto\./.test(offer.url) : !/^https?:\/\/produto\./.test(offer.url)) && offer.url.replaceAll("-", "").match(/MLB\d+/i)?.[0].toUpperCase() === collected.externalId.replace(/^item-/, "")
   ));
@@ -56,7 +57,7 @@ export function mergeImportedProduct(collected: CollectedProduct, existing: Admi
 export async function persistImportedProduct(db: Firestore, actor: { uid: string; email?: string }, source: ImportSource, collected: CollectedProduct, existing: AdminProduct | null, category: string, imageUrl: string, mode: ExtensionUpdateMode = "import", targetStoreId?: string) {
   if (targetStoreId && (!["price", "unavailable"].includes(mode) || !existing?.offers.some(offer => offer.storeId === targetStoreId))) throw new AdminError("Oferta do lote inválida.");
   const brandId = (mode !== "full" && existing?.brandId) || await ensureImportReference(db, actor, "brands", collected.brand);
-  const storeId = targetStoreId ?? await ensureImportReference(db, actor, "stores", source === "amazon" ? "Amazon" : "Mercado Livre");
+  const storeId = targetStoreId ?? await ensureImportReference(db, actor, "stores", source === "shopee" ? "Shopee" : source === "amazon" ? "Amazon" : "Mercado Livre");
   const input = mergeImportedProduct(collected, existing, category, brandId, storeId, imageUrl, mode);
   const product = await saveAdminProduct(db, actor, input, !existing, Date.now(), { key: `${source}-${collected.externalId}`, externalId: collected.externalId, storeId, offerId: input.offers.find(offer => offer.storeId === storeId && offer.externalId === collected.externalId)!.id, priceCondition:collected.priceCondition ?? "standard" });
   return { product, created: !existing };

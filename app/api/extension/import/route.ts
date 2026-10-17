@@ -31,11 +31,11 @@ export async function GET(request:NextRequest) {
     }
     if(params.has("pageUrl")) {
       const source=params.get("source");const pageUrl=params.get("pageUrl") ?? "";
-      if(!["amazon","mercadolivre"].includes(source ?? "") || pageUrl.length>4500)throw new AdminError("Página inválida.");
-      const identity=extensionProductIdentity(pageUrl,source as "amazon"|"mercadolivre");
+      if(!["amazon","mercadolivre","shopee"].includes(source ?? "") || pageUrl.length>4500)throw new AdminError("Página inválida.");
+      const identity=extensionProductIdentity(pageUrl,source as "amazon"|"mercadolivre"|"shopee");
       const name=params.get("name") ?? "";
       if(name.length>300)throw new AdminError("Nome muito longo.");
-      const {product,suggestions}=await lookupExtensionProductWithSuggestions(db,source as "amazon"|"mercadolivre",identity,name);
+      const {product,suggestions}=await lookupExtensionProductWithSuggestions(db,source as "amazon"|"mercadolivre"|"shopee",identity,name);
       return NextResponse.json({product:product?extensionProductSummary(product):null,suggestions,automaticSuggestions:true},{headers});
     }
     if(params.has("q")) {
@@ -55,7 +55,7 @@ export async function POST(request:NextRequest) {
     const actor=await requireExtension(request);
     const input=await readAdminJson(request);
     if(input.mode === "lookup-listing") {
-      if(!["amazon", "mercadolivre"].includes(input.source) || !Array.isArray(input.entries) || !input.entries.length || input.entries.length > 60)throw new AdminError("Lista inválida.");
+      if(!["amazon", "mercadolivre", "shopee"].includes(input.source) || !Array.isArray(input.entries) || !input.entries.length || input.entries.length > 60)throw new AdminError("Lista inválida.");
       for(const entry of input.entries) {
         if(!entry || typeof entry.pageUrl !== "string" || entry.pageUrl.length > 4500 || typeof entry.name !== "string" || !entry.name.trim() || entry.name.length > 300)throw new AdminError("Produto da lista inválido.");
       }

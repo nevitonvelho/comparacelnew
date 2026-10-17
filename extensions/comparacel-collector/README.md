@@ -1,6 +1,6 @@
 # Extensão Comparacel
 
-Chrome e Edge, Manifest V3. Importa o produto visível no Mercado Livre ou Amazon Brasil.
+Chrome e Edge, Manifest V3. Importa o produto visível no Mercado Livre, Amazon Brasil ou Shopee.
 
 ## Instalação
 
@@ -15,9 +15,9 @@ Pode usar `http://localhost:3000` durante o desenvolvimento ou o endereço HTTPS
 
 ## Uso
 
-1. Abra a página de produto no Mercado Livre ou Amazon. Vitrines, páginas de busca e páginas de verificação não são produtos.
+1. Abra a página de produto no Mercado Livre, Amazon ou Shopee. Vitrines, páginas de busca e páginas de verificação não são produtos.
 2. Clique no ícone da extensão. A página atual é coletada ao abrir o popup; **Coletar página aberta** permite repetir a coleta.
-3. A extensão verifica se o anúncio já existe, pelo identificador da Amazon ou Mercado Livre. Se existir, mostra a ficha e os botões de atualização.
+3. A extensão verifica se o anúncio já existe, pelo identificador do anúncio na Amazon, Mercado Livre ou Shopee. Se existir, mostra a ficha e os botões de atualização.
 4. Para um produto novo, cole seu link de afiliado, escolha uma categoria e clique em **Importar produto novo**. Mantenha o popup aberto até aparecer o resultado.
 5. Clique em **Abrir produto no painel** para revisar. Produtos novos ficam como rascunhos; produtos existentes mantêm publicação e campos manuais.
 
@@ -90,7 +90,7 @@ As sugestões diferenciam cores quando ambas as fichas informam a cor. A mensage
 
 1. Conecte a extensão e clique em **Atualizar preços em lote**. Uma tela própria fica aberta mesmo depois de fechar o popup.
 2. Clique em **Carregar todas as ofertas**. Não há filtro por data nem limite de quantidade na fila; inclui ofertas conferidas hoje e sem data; links sem identificador de anúncio ficam para conferência manual. Inclui rascunhos e ofertas indisponíveis para permitir reativação quando houver preço válido.
-3. Clique em **Iniciar atualização** e permita o acesso à Amazon e ao Mercado Livre quando o navegador pedir. O lote abre uma aba de coleta por vez, salva apenas o preço/condição, preserva o afiliado e avança com intervalo entre anúncios.
+3. Clique em **Iniciar atualização** e permita o acesso à Amazon, ao Mercado Livre e à Shopee quando o navegador pedir. O lote abre uma aba de coleta por vez, salva apenas o preço/condição, preserva o afiliado e avança com intervalo entre anúncios.
 4. Use **Pausar** e **Continuar atualização** quando necessário. Se aparecer uma verificação da loja, o lote pausa e abre a aba correspondente; resolva nela antes de continuar. Pode também deixar esse anúncio para revisão e continuar a fila.
 5. Confira o progresso e as pendências. Anúncios identificados sem preço são marcados como indisponíveis após três leituras rápidas. O último preço e o afiliado são preservados. Erros de navegação, verificações de acesso e anúncios diferentes não alteram a disponibilidade. Uma coleta válida reativa a oferta.
 
@@ -102,7 +102,7 @@ A página tem até 20 segundos para carregar. Depois de carregada, o lote tenta 
 
 ### Todas as ofertas (1.2.2)
 
-A fila inclui todas as ofertas identificadas da Amazon e Mercado Livre, independentemente da última conferência. Não limita a quantidade de produtos; mantém o limite de gravações por hora da API. Para repetir um lote concluído ou expandir um lote antigo, clique em **Carregar todas as ofertas**.
+A fila inclui todas as ofertas identificadas da Amazon, Mercado Livre e Shopee, independentemente da última conferência. Não limita a quantidade de produtos; mantém o limite de gravações por hora da API. Para repetir um lote concluído ou expandir um lote antigo, clique em **Carregar todas as ofertas**.
 
 ## Marcações na busca (1.3.0)
 
@@ -129,3 +129,11 @@ Páginas de produto /up/MLBU… passam pela coleta normal, em vez de serem confu
 Selecione a ficha sugerida por semelhança ou busque por nome/modelo. Confira capacidade, cor e voltagem antes de vincular. Cole o link de afiliado e use **Adicionar / atualizar este anúncio e afiliado**. Repita para quantos anúncios precisar, inclusive vários da Amazon ou Mercado Livre (até 50 ofertas por produto). A lista mostra os preços em ordem crescente. Atualizar apenas o preço e marcar indisponível atuam somente no anúncio identificado; outros links são preservados.
 
 O histórico público reúne as lojas em uma curva de mínimos diários observados. As médias de 30/90/180 dias exigem ao menos sete dias observados com intervalo de 14 dias; dias sem consulta não são estimados. Atualizações confirmadas são registradas mesmo quando o preço permanece igual.
+
+### Shopee 1.5.0
+
+Abra a página do produto em **shopee.com.br**, aguarde o preço carregar e selecione uma variação, quando houver. Clique em **Coletar página aberta**. Cole seu link de afiliado da Shopee (por exemplo, `https://s.shopee.com.br/...`), escolha a categoria e importe um rascunho, ou selecione uma ficha existente para adicionar outra oferta. O link de afiliado permanece no botão de compra; os IDs da loja e do anúncio identificam a oferta para futuras atualizações.
+
+URLs `/product/ID-DA-LOJA/ID-DO-PRODUTO` e `-i.ID-DA-LOJA.ID-DO-PRODUTO` são aceitas. A coleta inclui preço, indicação de Pix quando confirmada, nome, marca, descrição, características e imagem disponíveis na página. Parcelas e preços riscados são ignorados; faixas de preço pedem uma variação com preço único. Páginas de login ou verificação devem ser concluídas no navegador antes da coleta. O suporte Shopee funciona pela página aberta na extensão, inclusive para conferir preços em lote; o importador automático de links do servidor continua para Amazon e Mercado Livre.
+
+Para atualizar uma instalação existente, substitua os arquivos na pasta da extensão pelos do novo pacote e clique em **Recarregar** em `chrome://extensions`.

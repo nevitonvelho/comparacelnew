@@ -69,7 +69,7 @@ export function validateAdminProduct(value: unknown): AdminProduct {
     const storeId = text(offer.storeId, "Loja", 200, true);
     if (storeId.includes("/")) throw new AdminError("Loja inválida.");
     const externalId = offer.externalId === undefined ? undefined : text(offer.externalId, "Identificador da fonte", 100);
-    if (externalId && !/^(?:[A-Z0-9]{10}|(?:item-)?MLB\d+)$/.test(externalId)) throw new AdminError("Identificador da fonte inválido.");
+    if (externalId && !/^(?:[A-Z0-9]{10}|(?:item-)?MLB\d+|SHP\d{1,20}-\d{1,20})$/.test(externalId)) throw new AdminError("Identificador da fonte inválido.");
     return { ...(externalId === undefined ? {} : {externalId}), id: text(offer.id, "Identificador da oferta", 200, true), storeId, price: offer.price === null ? null : Math.round(numeric(offer.price, "Preço", 0.01, 100000000) * 100) / 100, url: publicHttpUrl(offer.url, "Link da oferta"), available: bool(offer.available, "Disponibilidade") };
   });
   if (offers.some(offer => !/^[a-zA-Z0-9_-]+$/.test(offer.id)) || new Set(offers.map(offer => offer.id)).size !== offers.length) throw new AdminError("Identificador de oferta inválido ou repetido.");

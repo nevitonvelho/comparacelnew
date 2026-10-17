@@ -20,6 +20,8 @@ export function priceAgeLabel(ageDays:number|null) {
 }
 export function offerProductPage(offer:AdminOffer,storeName:string) {
   const id=offer.externalId ?? "";
+  const shopee=id.match(/^SHP(\d+)-(\d+)$/);
+  if(/shopee/i.test(storeName) && shopee)return `https://shopee.com.br/product/${shopee[1]}/${shopee[2]}`;
   if(/amazon/i.test(storeName) && /^[A-Z0-9]{10}$/.test(id))return `https://www.amazon.com.br/dp/${id}`;
   if(/^item-MLB\d+$/.test(id))return `https://produto.mercadolivre.com.br/MLB-${id.slice(8)}`;
   if(/^MLB\d+$/.test(id))return `https://www.mercadolivre.com.br/p/${id}`;

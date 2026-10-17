@@ -1,7 +1,7 @@
 /* global chrome */
 const $ = selector => document.querySelector(selector);
 const storageKey = "priceBatch";
-const origins = ["https://*.amazon.com.br/*", "https://*.mercadolivre.com.br/*"];
+const origins = ["https://*.amazon.com.br/*", "https://*.mercadolivre.com.br/*", "https://shopee.com.br/*", "https://www.shopee.com.br/*"];
 let config, state, running = false, pauseRequested = false, lastWriteAt = 0;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function api(method, body, query = "") {
@@ -48,11 +48,11 @@ async function collect(tabId) {
       await chrome.scripting.executeScript({target: {tabId}, files: ["collect.js"]});
       const [result] = await chrome.scripting.executeScript({target: {tabId}, func: () => {
         try { return {capture: globalThis.collectProduct()}; } catch (error) {
-          const name = document.querySelector("#productTitle, .ui-pdp-title")?.textContent.trim();
+          const name = document.querySelector("#productTitle, .ui-pdp-title, h1")?.textContent.trim();
           // Missing price on an identifiable product page; never synthesize a
           // capture for a challenge, failed navigation or a generic error page.
           const missingPrice = /preço principal|confirmar o preço/.test(error.message);
-          const capture = missingPrice && name ? {version: 1, source: location.hostname.includes("amazon") ? "amazon" : "mercadolivre", pageUrl: location.href, capturedAt: new Date().toISOString(), name: name.slice(0,300), price: null, condition: "standard", brand: "Genérico", description: "", imageUrl: "", specs: []} : null;
+          const capture = missingPrice && name ? {version: 1, source: location.hostname.includes("shopee") ? "shopee" : location.hostname.includes("amazon") ? "amazon" : "mercadolivre", pageUrl: location.href, capturedAt: new Date().toISOString(), name: name.slice(0,300), price: null, condition: "standard", brand: "Genérico", description: "", imageUrl: "", specs: []} : null;
           return {error: error.message, unavailableCapture: capture};
         }
       }});
@@ -81,7 +81,7 @@ async function run() {
     try {
       while (state.index < state.queue.length && !pauseRequested) {
         const item = state.queue[state.index];
-        $("#status").textContent = `Conferindo ${item.name} (${item.source === "amazon" ? "Amazon" : "Mercado Livre"})…`;
+        $("#status").textContent = `Conferindo ${item.name} (${item.source === "shopee" ? "Shopee" : item.source === "amazon" ? "Amazon" : "Mercado Livre"})…`;
         try {
           if (state.tabId) {
             try { await chrome.tabs.get(state.tabId); } catch { state.tabId = null; }

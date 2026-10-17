@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Comparacel — Importador de produtos",
-  "version": "1.4.0",
-  "description": "Importa o produto aberto no Mercado Livre ou Amazon para o Comparacel.",
+  "version": "1.5.0",
+  "description": "Importa produtos e ofertas da Amazon, Mercado Livre e Shopee para o Comparacel.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -20,7 +20,9 @@
     "https://mercadolivre.com.br/*",
     "https://www.mercadolivre.com.br/*",
     "https://lista.mercadolivre.com.br/*",
-    "https://produto.mercadolivre.com.br/*"
+    "https://produto.mercadolivre.com.br/*",
+    "https://shopee.com.br/*",
+    "https://www.shopee.com.br/*"
   ],
   "action": {
     "default_popup": "popup.html",

@@ -29,6 +29,7 @@ test('unknown prices do not become zero and tied offers keep their identity', ()
   assert.deepEqual(purchaseOffers({ offers: [offer('a', 50), offer('b', 50)] }).map(item => item.id), ['a', 'b']);
 });
 test('CTAs identify the merchant without inferring a promotion', () => {
+  assert.equal(offerCta('Shopee'), 'Ver oferta na Shopee');
   assert.equal(offerCta('Mercado Livre'), 'Ver oferta no Mercado Livre');
   assert.equal(offerCta('Amazon.com.br'), 'Conferir preço na Amazon');
   assert.equal(offerCta('Loja local'), 'Ver oferta em Loja local');

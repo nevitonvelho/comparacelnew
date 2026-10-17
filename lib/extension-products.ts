@@ -16,7 +16,7 @@ export function offerMatchesIdentity(offer: AdminProduct["offers"][number], sour
 export function offerBelongsToSource(offer: AdminProduct["offers"][number], source: ImportSource) {
   try {
     const host=new URL(offer.url).hostname.toLowerCase();
-    return source === "amazon" ? host === "amzn.to" || host === "amazon.com.br" || host.endsWith(".amazon.com.br") : host === "meli.la" || host === "mercadolivre.com.br" || host.endsWith(".mercadolivre.com.br") || host === "mercadolivre.com" || host.endsWith(".mercadolivre.com");
+    return source === "shopee" ? ["shopee.com.br","www.shopee.com.br","s.shopee.com.br","shope.ee","shp.ee"].includes(host) : source === "amazon" ? host === "amzn.to" || host === "amazon.com.br" || host.endsWith(".amazon.com.br") : host === "meli.la" || host === "mercadolivre.com.br" || host.endsWith(".mercadolivre.com.br") || host === "mercadolivre.com" || host.endsWith(".mercadolivre.com");
   } catch { return false; }
 }
 async function lookupExtensionMatch(db: Firestore, source: ImportSource, externalId: string) {
@@ -66,7 +66,7 @@ export async function lookupExtensionListing(db: Firestore, source: ImportSource
     // Sponsored search cards may expose only a tracking URL. Match by title
     // in that case, without claiming that the advertisement is already linked.
     const host = new URL(entry.pageUrl).hostname;
-    const allowed = source === "amazon" ? /(^|\.)amazon\.com\.br$/ : /(^|\.)mercadolivre\.com\.br$/;
+    const allowed = source === "shopee" ? /^(?:www\.)?shopee\.com\.br$/ : source === "amazon" ? /(^|\.)amazon\.com\.br$/ : /(^|\.)mercadolivre\.com\.br$/;
     if (!allowed.test(host)) throw new AdminError("Página inválida.");
     try { return extensionProductIdentity(entry.pageUrl, source); } catch { return null; }
   });
@@ -128,10 +128,10 @@ function suggestCandidates(products: AdminProduct[], pageName: string) {
 
 export function extensionPriceQueue(products: AdminProduct[], now = Date.now()) {
   return products.flatMap(product => product.offers.flatMap(offer => {
-    const source = (["amazon", "mercadolivre"] as const).find(source => offerBelongsToSource(offer, source));
+    const source = (["amazon", "mercadolivre", "shopee"] as const).find(source => offerBelongsToSource(offer, source));
     if (!source) return [];
     const freshness = offerPriceFreshness(offer, 7, now);
-    const pageUrl = offerProductPage(offer, source === "amazon" ? "Amazon" : "Mercado Livre");
+    const pageUrl = offerProductPage(offer, source === "shopee" ? "Shopee" : source === "amazon" ? "Amazon" : "Mercado Livre");
     // Short affiliate URLs without a known identity require manual review.
     try {
       const identity = extensionProductIdentity(pageUrl, source);
@@ -141,7 +141,7 @@ export function extensionPriceQueue(products: AdminProduct[], now = Date.now()) 
   })).sort((a, b) => (a.checkedAt ?? 0) - (b.checkedAt ?? 0) || a.name.localeCompare(b.name));
 }
 
-export function validateExtensionBatchOffer(product: AdminProduct | null, source: "amazon" | "mercadolivre", identity: string, input: Record<string, unknown>) {
+export function validateExtensionBatchOffer(product: AdminProduct | null, source: "amazon" | "mercadolivre" | "shopee", identity: string, input: Record<string, unknown>) {
   if (!["price", "unavailable"].includes(String(input.mode)) || !product || typeof input.storeId !== "string" || typeof input.offerUrl !== "string") throw new AdminError("Lote inválido.");
   const offer = product.offers.find(offer => offer.storeId === input.storeId && offer.url === input.offerUrl);
   if (!offer || offer.url !== input.offerUrl || !offerBelongsToSource(offer, source) || !offerMatchesIdentity(offer, source, identity)) {

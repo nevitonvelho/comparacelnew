@@ -13,6 +13,90 @@ globalThis.prepareProductCollection = async function () {
   }finally {scrollTo(original.x,original.y);}
 };
 globalThis.collectProduct = function () {
+  if(location.protocol === "https:" && ["shopee.com.br","www.shopee.com.br"].includes(location.hostname)) {
+    if(/captcha|verify|login|buyer\/login/i.test(location.pathname) || document.querySelector('#captcha, .g-recaptcha, iframe[src*="captcha"]'))throw new Error("Conclua a verificação da Shopee e abra o produto.");
+    if(!/^\/product\/\d+\/\d+(?:\/|$)/.test(location.pathname) && !/-i\.\d+\.\d+(?:\/|$)/.test(location.pathname))throw new Error("Abra uma página de produto da Shopee, com a loja e o produto na URL.");
+    const clean=value=>String(value || "").replace(/\s+/g," ").trim();
+    const products=[];
+    function readStructured(value) {
+      if(Array.isArray(value)){value.forEach(readStructured);return;}
+      if(!value || typeof value!=="object")return;
+      if([value['@type']].flat().includes('Product'))products.push(value);
+      if(value['@graph'])readStructured(value['@graph']);
+    }
+    for(const script of document.querySelectorAll('script[type="application/ld+json"]'))try{readStructured(JSON.parse(script.textContent));}catch{/* A broken optional JSON-LD block must not hide the visible product. */}
+    const structured=products[0] || {};
+    const title=document.querySelector('h1, [data-testid="product-title"]');
+    const name=clean(title?.textContent || structured.name);
+    if(!name)throw new Error("Aguarde a ficha do produto Shopee carregar antes de coletar.");
+    function priceFromText(raw) {
+      const value=clean(raw);
+      const matches=[...value.matchAll(/R\$\s*(\d[\d.]*,\d{2})(?!\d)/g)];
+      if(matches.length!==1)return null; // A price range requires a selected variation.
+      const price=Number(matches[0][1].replaceAll('.', '').replace(',', '.'));
+      return Number.isFinite(price) && price>0 ? price : null;
+    }
+    let price=null,condition="standard";
+    const explicit=document.querySelector('[data-testid="product-price"], [data-testid="pdp-product-price"]');
+    if(explicit) {
+      if([...clean(explicit.textContent).matchAll(/R\$/g)].length>1)throw new Error("Selecione uma variação com preço único na Shopee antes de coletar.");
+      price=priceFromText(explicit.textContent);
+      if(price && /no pix/i.test(explicit.parentElement?.textContent || ""))condition="pix";
+    }
+    if(price===null && title) {
+      const titleRect=title.getBoundingClientRect();
+      const candidates=[];
+      const walker=document.createTreeWalker(document.querySelector('main, [role="main"]') || document.body,NodeFilter.SHOW_TEXT);
+      while(walker.nextNode()) {
+        let raw=clean(walker.currentNode.textContent);const node=walker.currentNode.parentElement;
+        if(node && (raw==='R$' || /^\d[\d.]*,\d{2}$/.test(raw))) {const context=clean(node.parentElement?.textContent);if(context.length<120 && context.includes("R$"))raw=context;}
+        if(!raw.startsWith('R$') || !node || node.closest('s, del, script, style, button, [aria-hidden="true"]'))continue;
+        const rect=node.getBoundingClientRect(),style=getComputedStyle(node),font=parseFloat(style.fontSize);
+        if(!rect.width || !rect.height || font<20 || style.visibility==='hidden' || style.display==='none' || style.opacity==='0' || style.textDecorationLine.includes('line-through') || rect.top<titleRect.top-10 || rect.top>titleRect.bottom+400 || rect.left<titleRect.left-30)continue;
+        candidates.push({node,raw,font,top:rect.top});
+      }
+      candidates.sort((a,b)=>b.font-a.font || a.top-b.top);
+      const primary=candidates[0];
+      if(primary) {
+        const range=clean(primary.node.parentElement?.textContent);
+        if(range.length<180 && /R\$.*\d\s*[-–]\s*(?:R\$)?\s*\d/.test(range))throw new Error("Selecione uma variação com preço único na Shopee antes de coletar.");
+        if((primary.raw.match(/R\$/g) || []).length>1 || /\d\s*[-–]\s*(?:R\$)?\s*\d/.test(primary.raw))throw new Error("Selecione uma variação com preço único na Shopee antes de coletar.");
+        price=priceFromText(primary.raw);
+        const context=clean(primary.node.parentElement?.textContent);
+        if(price && context.length<400 && /no pix/i.test(context))condition="pix";
+      }
+    }
+    if(price===null) {
+      const offers=[structured.offers].flat().filter(Boolean);
+      if(offers.length===1) {
+        const offer=offers[0];
+        if(offer.lowPrice!==undefined && offer.highPrice!==undefined && Number(offer.lowPrice)!==Number(offer.highPrice))throw new Error("Selecione uma variação com preço único na Shopee antes de coletar.");
+        if(offer.availability && /OutOfStock|Discontinued|SoldOut/i.test(offer.availability))throw new Error("O preço principal não está disponível: anúncio Shopee sem estoque.");
+        const amount=offer.price ?? offer.lowPrice;
+        if((!offer.priceCurrency || offer.priceCurrency==='BRL') && amount!==undefined && /^\d+(?:\.\d+)?$/.test(String(amount)))price=Number(amount);
+      }
+    }
+    if(!Number.isFinite(price) || price<=0)throw new Error("Não foi possível ler um preço único na Shopee. Aguarde o carregamento ou selecione a variação.");
+    const specs=[],seen=new Set();
+    const add=(label,value)=>{label=clean(label);value=clean(value);if(label && value && !seen.has(label.toLowerCase()) && specs.length<200){seen.add(label.toLowerCase());specs.push({name:label.slice(0,200),value:value.slice(0,2000)});}};
+    for(const property of [structured.additionalProperty].flat().filter(Boolean))add(property.name,property.value);
+    document.querySelectorAll('table tr, [data-testid="product-attribute"], [data-testid="product-specification"]').forEach(row=>{const cells=row.querySelectorAll('th,td,[data-testid="attribute-name"],[data-testid="attribute-value"]');add(cells[0]?.textContent,cells[1]?.textContent);});
+    for(const label of document.querySelectorAll('label')) {
+      const heading=label.parentElement?.parentElement?.parentElement?.textContent || '';
+      if(/especificaç(?:ões|oes) do produto/i.test(heading) && !/categoria/i.test(label.textContent))add(label.textContent,label.nextElementSibling?.textContent);
+    }
+    const descriptionHeading=[...document.querySelectorAll('h2,h3,section > div')].find(node=>/^descriç(?:ão|ao) do produto$/i.test(clean(node.textContent)));
+    const description=document.querySelector('[data-testid="product-description"]')?.textContent || structured.description || descriptionHeading?.nextElementSibling?.textContent || '';
+    const hero=[...document.querySelectorAll('main img, [role="main"] img, img')].find(image=>{
+      const rect=image.getBoundingClientRect(),heading=title?.getBoundingClientRect();
+      return rect.width>=180 && rect.height>=180 && (!heading || rect.top<=heading.bottom+100 && rect.bottom>=heading.top-800);
+    });
+    const rawImage=document.querySelector('meta[property="og:image"]')?.content || [structured.image].flat().filter(Boolean)[0] || hero?.currentSrc || hero?.src || '';
+    const imageUrl=typeof rawImage==='string'?rawImage:rawImage.url || '';
+    const brand=specs.find(spec=>/^(marca|fabricante)$/i.test(spec.name))?.value || (typeof structured.brand==='string'?structured.brand:structured.brand?.name) || 'Genérico';
+    return {version:1,source:"shopee",pageUrl:location.href,capturedAt:new Date().toISOString(),name:name.slice(0,300),price,condition,brand:clean(brand).slice(0,120),description:clean(description).slice(0,50000),imageUrl,specs};
+  }
+
   if(location.protocol === "https:" && ["amazon.com.br","www.amazon.com.br"].includes(location.hostname)) {
     const text=selector=>document.querySelector(selector)?.textContent.trim() || "";
     if(document.querySelector("#captchacharacters, form[action*='validateCaptcha']"))throw new Error("Conclua a verificação da Amazon e abra o produto.");

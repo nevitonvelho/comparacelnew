@@ -1,20 +1,29 @@
 import { AdminError, slugify, type AdminSpec } from "./admin-model";
-export type ImportSource = "amazon" | "mercadolivre";
+export type ImportSource = "amazon" | "mercadolivre" | "shopee";
 export type ImportEntry = { buyUrl: string; productUrl: string; externalId: string; kind?: "catalog" | "item" };
 export type CollectedProduct = { highlights?: {kind:"pro"|"con";text:string}[]; priceCondition?: "pix" | "standard"; attempts?: number; name: string; brand: string; description: string; imageUrl: string; price: number | null; specs: AdminSpec[]; externalId: string; buyUrl: string };
 export function importUrl(raw: string, source: ImportSource) {
   try {
     const url = new URL(raw);
-    const hosts = source === "amazon" ? ["amazon.com.br", "www.amazon.com.br", "amzn.to"] : ["mercadolivre.com.br", "www.mercadolivre.com.br", "produto.mercadolivre.com.br", "meli.la"];
+    const hosts = source === "shopee" ? ["shopee.com.br", "www.shopee.com.br", "s.shopee.com.br", "shope.ee", "shp.ee"] : source === "amazon" ? ["amazon.com.br", "www.amazon.com.br", "amzn.to"] : ["mercadolivre.com.br", "www.mercadolivre.com.br", "produto.mercadolivre.com.br", "meli.la"];
     if (url.protocol !== "https:" || url.username || url.password || url.port || !hosts.includes(url.hostname)) throw new Error();
     return url;
-  } catch { throw new AdminError(`Use um link https válido ${source === "amazon" ? "da Amazon Brasil ou amzn.to" : "do Mercado Livre ou meli.la"}.`); }
+  } catch { throw new AdminError(`Use um link https válido ${source === "shopee" ? "da Shopee Brasil ou s.shopee.com.br" : source === "amazon" ? "da Amazon Brasil ou amzn.to" : "do Mercado Livre ou meli.la"}.`); }
 }
 export function parseImportLine(line: string, source: ImportSource): ImportEntry {
   const tokens = line.trim().split(/\s+/);
   if (!line.trim() || tokens.length > (source === "amazon" ? 1 : 2)) throw new AdminError("Formato da linha inválido.");
   const urls = tokens.map(token => importUrl(token, source));
   const buyUrl = urls[0].href;
+  if (source === "shopee") {
+    for(const url of urls) {
+      if(!["shopee.com.br","www.shopee.com.br"].includes(url.hostname))continue;
+      const match=url.pathname.match(/^\/product\/(\d{1,20})\/(\d{1,20})(?:\/|$)/) ?? url.pathname.match(/-i\.(\d{1,20})\.(\d{1,20})(?:\/|$)/);
+      if(match)return {buyUrl,productUrl:`https://shopee.com.br/product/${match[1]}/${match[2]}`,externalId:`SHP${match[1]}-${match[2]}`};
+    }
+    if(urls.length===1 && ["s.shopee.com.br","shope.ee","shp.ee"].includes(urls[0].hostname))return {buyUrl,productUrl:buyUrl,externalId:""};
+    throw new AdminError("Use o link de afiliado seguido da URL completa do produto Shopee (/product/loja/produto ou -i.loja.produto).");
+  }
   if (source === "amazon") {
     const externalId = urls[0].pathname.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})(?:\/|$)/i)?.[1].toUpperCase() ?? "";
     if (!externalId && urls[0].hostname !== "amzn.to") throw new AdminError("O link da Amazon precisa conter /dp/ASIN ou ser um link amzn.to.");

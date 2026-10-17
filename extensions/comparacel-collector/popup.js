@@ -80,7 +80,7 @@ collect.addEventListener("click", async () => {
   try {
     const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
     const url=new URL(tab?.url || "about:blank");
-    if (!tab?.id || url.protocol!=="https:" || !["mercadolivre.com.br","www.mercadolivre.com.br","produto.mercadolivre.com.br","lista.mercadolivre.com.br","amazon.com.br","www.amazon.com.br"].includes(url.hostname)) throw new Error("Abra um produto no Mercado Livre ou Amazon e tente novamente.");
+    if (!tab?.id || url.protocol!=="https:" || !["mercadolivre.com.br","www.mercadolivre.com.br","produto.mercadolivre.com.br","lista.mercadolivre.com.br","amazon.com.br","www.amazon.com.br","shopee.com.br","www.shopee.com.br"].includes(url.hostname)) throw new Error("Abra um produto no Mercado Livre, Amazon ou Shopee e tente novamente.");
     if((url.hostname.includes("amazon") && url.pathname === "/s") || url.hostname === "lista.mercadolivre.com.br" || (url.hostname.includes("mercadolivre") && !/MLB(?:U|-)?\d+/i.test(url.pathname))) {
       await chrome.scripting.insertCSS({target:{tabId:tab.id},files:["listing.css"]});
       await chrome.scripting.executeScript({target:{tabId:tab.id},files:["listing.js"]});
@@ -89,8 +89,8 @@ collect.addEventListener("click", async () => {
     }
     await chrome.scripting.executeScript({target:{tabId:tab.id},files:["collect.js"]});
     const [result] = await chrome.scripting.executeScript({target:{tabId:tab.id},func:async()=>{try{await globalThis.prepareProductCollection();return {data:globalThis.collectProduct()};}catch(error){if(/preço principal|confirmar o preço/.test(error.message)) {
-      const name=document.querySelector("#productTitle, .ui-pdp-title")?.textContent.trim();
-      if(name)return {data:{version:1,source:location.hostname.includes("amazon")?"amazon":"mercadolivre",pageUrl:location.href,capturedAt:new Date().toISOString(),name:name.slice(0,300),price:null,condition:"standard",brand:"Genérico",description:"",imageUrl:"",specs:[]}};
+      const name=document.querySelector("#productTitle, .ui-pdp-title, h1")?.textContent.trim();
+      if(name)return {data:{version:1,source:location.hostname.includes("shopee")?"shopee":location.hostname.includes("amazon")?"amazon":"mercadolivre",pageUrl:location.href,capturedAt:new Date().toISOString(),name:name.slice(0,300),price:null,condition:"standard",brand:"Genérico",description:"",imageUrl:"",specs:[]}};
     }
     return {error:error.message};}}});
     if (!result?.result?.data) throw new Error(result?.result?.error || "Não foi possível ler a página.");
@@ -122,7 +122,8 @@ function renderProducts(selected=matchedProduct?.id || "") {
 }
 function savedAffiliateForSource(product) {
   const page=captured?.pageUrl || "";
-  const identity=captured?.source==="amazon" ? page.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i)?.[1].toUpperCase() : page.replaceAll("-", "").match(/MLB\d+/i)?.[0].toUpperCase();
+  const shopee=page.match(/\/product\/(\d+)\/(\d+)/) ?? page.match(/-i\.(\d+)\.(\d+)/);
+  const identity=captured?.source==="shopee" && shopee ? `SHP${shopee[1]}-${shopee[2]}` : captured?.source==="amazon" ? page.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i)?.[1].toUpperCase() : page.replaceAll("-", "").match(/MLB\d+/i)?.[0].toUpperCase();
   return product?.offers?.find(offer=>identity && (offer.externalId?.replace(/^item-/, "")===identity || offer.url===page || offer.url.replaceAll("-", "").includes(identity)));
 }
 function renderActions() {
@@ -144,12 +145,12 @@ function renderActions() {
     for(const offer of [...product.offers].sort((a,b)=>(a.price ?? Infinity)-(b.price ?? Infinity))) {
       const row=document.createElement("p");
       const link=document.createElement("a");link.href=offer.url;link.target="_blank";link.rel="noopener noreferrer";
-      link.textContent=`${/amazon|amzn/i.test(offer.url)?"Amazon":"Mercado Livre"} · ${offer.price===null?"Consultar preço":new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(offer.price)}`;
+      link.textContent=`${/shopee|shope\.ee|shp\.ee/i.test(offer.url)?"Shopee":/amazon|amzn/i.test(offer.url)?"Amazon":"Mercado Livre"} · ${offer.price===null?"Consultar preço":new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(offer.price)}`;
       row.append(link);offerList.append(row);
     }
   }
   const affiliate=document.querySelector("#affiliate");
-  affiliate.placeholder=(exact || savedAffiliateForSource(product))?"Deixe vazio para manter o afiliado cadastrado":"https://meli.la/… ou https://amzn.to/…";
+  affiliate.placeholder=(exact || savedAffiliateForSource(product))?"Deixe vazio para manter o afiliado cadastrado":"Cole seu link de afiliado desta loja";
   if(captured?.price==null && product && status.textContent==="Cole o link de afiliado, escolha a categoria e importe.")status.textContent="Preço não disponível. Confira se a ficha selecionada corresponde ao anúncio e use Marcar oferta como indisponível.";
   const edit=document.querySelector("#edit");edit.hidden=!product;
   if(product)document.querySelector("#category").value=product.category;

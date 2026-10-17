@@ -275,3 +275,14 @@ test('many same-marketplace announcements append without replacing links and upd
  const unavailable=mergeImportedProduct({...collected,price:null},updated,'celulares','marca','amazon','','unavailable');
  assert.equal(unavailable.offers[0].available,true);assert.equal(unavailable.offers[1].available,false);
 });
+
+test('Shopee URLs distinguish sellers/items, support original slugs and reject foreign hosts',()=>{
+ const canonical='https://shopee.com.br/product/528144318/58253377016';
+ const affiliate='https://s.shopee.com.br/affiliate';
+ assert.equal(parseImportLine(affiliate+' '+canonical,'shopee').externalId,'SHP528144318-58253377016');
+ assert.equal(parseImportLine('https://shopee.com.br/Liquidificador-Mondial-i.528144318.58253377016?sp_atk=example','shopee').productUrl,canonical);
+ assert.equal(parseImportLine(affiliate,'shopee').externalId,'');
+ for(const link of ['https://shopee.com.br.evil.test/product/1/2','https://evil.test/product/1/2','http://shopee.com.br/product/1/2','https://shopee.com.br/search?keyword=test','https://s.shopee.com.br/product/1/2 https://evil.test/product/1/2'])assert.throws(()=>parseImportLine(link,'shopee'));
+ assert.equal(allowedImportFetchUrl('https://down-br.img.susercontent.com/file/example','image').hostname,'down-br.img.susercontent.com');
+ assert.throws(()=>allowedImportFetchUrl('https://down-br.img.susercontent.com.evil.test/file/example','image'));
+});

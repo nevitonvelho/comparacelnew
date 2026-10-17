@@ -15,6 +15,7 @@ export function purchaseOffers(product: Pick<Product, "offers">): Offer[] {
 
 export function offerCta(store: string) {
   const normalized = store.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (normalized === "shopee") return "Ver oferta na Shopee";
   if (normalized === "mercadolivre") return "Ver oferta no Mercado Livre";
   if (["amazon", "amazonbrasil", "amazoncombr"].includes(normalized)) return "Conferir preço na Amazon";
   return `Ver oferta em ${store}`;

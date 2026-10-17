@@ -136,7 +136,7 @@ function routeFixture() {
   db.collection=kind=>kind==='categories'?{where:()=>({limit:()=>({get:async()=>({empty:false})})}),get:async()=>({docs:[{id:'lavadoras',data:()=>({slug:'lavadoras',name:'Lavadoras'})}]})}:collection(kind);
   db.runTransaction=async run=>run({get:async()=>({data:()=>({})}),set:()=>{},update:()=>{}});
   globalThis.extensionRoute={db,persist:async(_db,_actor,source,collected,existing,category,image,mode)=>{
-    const product=mergeImportedProduct(collected,existing,category,'marca',source==='amazon'?'amazon':'mercado-livre',image,mode);
+    const product=mergeImportedProduct(collected,existing,category,'marca',source==='shopee'?'shopee':source==='amazon'?'amazon':'mercado-livre',image,mode);
     product.offers.find(offer=>offer.externalId===collected.externalId).externalId=collected.externalId;
     records[product.id]=product;return {product,created:!existing};
   }};
@@ -344,4 +344,24 @@ test('batch can address the second announcement from the same marketplace',()=>{
  const offers=[{id:'one',storeId:'amazon',url:'https://amzn.to/one',externalId:'B000000001'},{id:'two',storeId:'amazon',url:'https://amzn.to/two',externalId:'B000000002'}];
  validateExtensionBatchOffer({offers},'amazon','B000000002',{mode:'price',storeId:'amazon',offerUrl:offers[1].url});
  assert.throws(()=>validateExtensionBatchOffer({offers},'amazon','B000000002',{mode:'price',storeId:'amazon',offerUrl:offers[0].url}));
+});
+
+test('Shopee captures preserve affiliate, seller/item identity, Pix and technical facts',()=>{
+ const shopee=validateProductCapture({...capture,source:'shopee',pageUrl:'https://shopee.com.br/product/528144318/58253377016',price:126.26,name:'Liquidificador Mondial'});
+ const result=collectedFromProductCapture(shopee,'https://s.shopee.com.br/affiliate '+shopee.pageUrl);
+ assert.equal(result.externalId,'SHP528144318-58253377016');assert.equal(result.buyUrl,'https://s.shopee.com.br/affiliate');assert.equal(result.price,126.26);assert.equal(result.priceCondition,'pix');
+ assert.throws(()=>collectedFromProductCapture(shopee,'https://shopee.com.br/product/528144319/58253377016'));
+ assert.throws(()=>validateProductCapture({...shopee,pageUrl:'https://s.shopee.com.br/affiliate'}));
+});
+test('Shopee import adds an offer to the selected cross-marketplace product and supports exact updates',async()=>{
+ const {record,records}=routeFixture();
+ const shopee={...capture,source:'shopee',pageUrl:'https://shopee.com.br/product/528144318/58253377016',price:126.26};
+ const added=await sendExtension({capture:shopee,mode:'offer',productId:'lavadora',affiliateUrl:'https://s.shopee.com.br/affiliate'});
+ assert.equal(added.status,200);assert.equal(records.lavadora.offers.length,2);assert.deepEqual(records.lavadora.offers[0],record.offers[0]);
+ assert.equal(records.lavadora.offers[1].storeId,'shopee');assert.equal(records.lavadora.offers[1].externalId,'SHP528144318-58253377016');
+ assert.equal((await sendExtension({capture:{...shopee,price:120},mode:'price',productId:'lavadora'})).status,200);
+ assert.equal(records.lavadora.offers[1].url,'https://s.shopee.com.br/affiliate');assert.equal(records.lavadora.offers[1].price,120);
+ const queue=extensionPriceQueue([records.lavadora]);
+ const item=queue.find(item=>item.source==='shopee');assert.equal(item.pageUrl,shopee.pageUrl);assert.equal(item.identity,'SHP528144318-58253377016');
+ validateExtensionBatchOffer(records.lavadora,'shopee',item.identity,{mode:'price',storeId:'shopee',offerUrl:item.offerUrl});
 });

@@ -2,7 +2,7 @@ import { AdminError } from "./admin-model";
 type Purpose = "amazon" | "image" | "ml-link";
 export function allowedImportFetchUrl(raw: string, purpose: Purpose) {
   const url = new URL(raw);
-  const hosts = purpose === "amazon" ? ["amazon.com.br", "www.amazon.com.br", "amzn.to"] : purpose === "ml-link" ? ["meli.la", "mercadolivre.com.br", "www.mercadolivre.com.br", "produto.mercadolivre.com.br"] : ["m.media-amazon.com", "images-na.ssl-images-amazon.com", "images-eu.ssl-images-amazon.com", "http2.mlstatic.com"];
+  const hosts = purpose === "amazon" ? ["amazon.com.br", "www.amazon.com.br", "amzn.to"] : purpose === "ml-link" ? ["meli.la", "mercadolivre.com.br", "www.mercadolivre.com.br", "produto.mercadolivre.com.br"] : ["m.media-amazon.com", "images-na.ssl-images-amazon.com", "images-eu.ssl-images-amazon.com", "http2.mlstatic.com", "cf.shopee.com.br", "down-br.img.susercontent.com"];
   if (purpose === "image" && url.protocol === "http:" && url.hostname === "http2.mlstatic.com") url.protocol = "https:";
   if (url.protocol !== "https:" || url.username || url.password || url.port || !hosts.includes(url.hostname)) throw new AdminError("A fonte retornou um endereço não permitido.");
   return url;
