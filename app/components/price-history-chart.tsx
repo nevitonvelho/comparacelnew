@@ -7,8 +7,9 @@ const date=(value:string)=>new Date(value).toLocaleDateString("pt-BR",{day:"2-di
 export function PriceHistoryChart({points,stores,unavailable=false}:{points:PriceHistoryPoint[];stores:{id:string;name:string}[];unavailable?:boolean}) {
   const [focus,setFocus]=useState<string|null>(null);
   const intelligence=priceIntelligence(points);
-  const values=intelligence.daily.slice(-180);
-  const series=[{id:"general",name:"Menor preço observado no dia",color:"#0066ff",values}];
+  const values=points.filter(point=>Number.isFinite(Date.parse(point.date)) && Number.isFinite(point.price) && point.price>0)
+    .sort((a,b)=>Date.parse(a.date)-Date.parse(b.date)).slice(-180);
+  const series=[{id:"general",name:"Todas as capturas",color:"#0066ff",values}];
   const all=values.map((point,index)=>({...point,name:stores.find(store=>store.id===point.storeId)?.name ?? "Loja",color:"#0066ff",key:`general:${index}`}));
   const prices=all.map(point=>point.price);
   const low=all.length?Math.min(...prices):0,high=all.length?Math.max(...prices):0;
@@ -31,7 +32,7 @@ export function PriceHistoryChart({points,stores,unavailable=false}:{points:Pric
       </svg>
       <div className="price-intelligence">
         <div className="admin-block-heading"><h3>Inteligência de preços · Comparacel Radar</h3><span>{intelligence.classification}</span></div>
-        <p>Histórico geral de todas as lojas. As médias usam o menor preço observado por dia, com o mesmo peso para cada dia.</p>
+        <p>O gráfico reúne os preços registrados em todas as lojas. As médias usam o menor preço observado em cada dia, com o mesmo peso para cada dia.</p>
         <div className="price-intelligence-grid">{([
           ["Menor preço histórico", intelligence.minimum], ["Maior preço histórico", intelligence.maximum],
           ["Menor captura nos últimos 7 dias", intelligence.recentMinimum],
@@ -41,7 +42,7 @@ export function PriceHistoryChart({points,stores,unavailable=false}:{points:Pric
           <div><small>Desconto sobre a média de 30 dias</small><strong>{intelligence.discount === null ? "Sem dados suficientes" : `${intelligence.discount.toLocaleString("pt-BR",{maximumFractionDigits:1})}%`}</strong></div>
         </div>
       </div>
-      <p className="admin-helper price-history-note">{intelligence.classification === "Sem classificação" ? "Para calcular uma média, precisamos de pelo menos 7 dias observados distribuídos por 14 dias dentro do período. " : ""}Gráfico com até 180 dias observados; dias sem consulta não são estimados. Os valores são dos momentos de consulta; confirme preço, frete e pagamento na loja.</p>
+      <p className="admin-helper price-history-note">{intelligence.classification === "Sem classificação" ? "Para calcular uma média, precisamos de pelo menos 7 dias observados distribuídos por 14 dias dentro do período. " : ""}A linha mostra até 180 registros de preço, inclusive ofertas acima do menor preço do dia. Os dias sem consulta não são estimados. Confirme preço, frete e pagamento na loja.</p>
     </>}
   </section>;
 }
