@@ -1549,3 +1549,21 @@ h3 { font-weight:600; }
 .price-intelligence-grid small { display:block; color:#68778a; margin-bottom:8px; }
 .price-intelligence-grid strong { display:block; font-size:15px; }
 @media(max-width:600px) { .price-intelligence-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* Product offers: distinct store cards and a visible verification note. */
+.offers .offers-intro { margin:10px 0 20px; color:#56606c; font-size:14px; line-height:1.6; }
+.offer-verification { display:flex; align-items:flex-start; gap:12px; padding:18px; margin:0 0 16px; border:1px solid #cddfff; border-radius:12px; background:#f4f8ff; color:#243b60; }
+.offer-verification-icon { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:28px; height:28px; border-radius:50%; background:#e1ecff; color:#005bea; }
+.offer-verification strong { display:block; font-size:14px; line-height:1.6; }
+.offer-verification p { margin:5px 0 0; font-size:13px; line-height:1.75; }
+.offers .affiliate-disclosure { margin:0 0 20px; }
+.offers .offer { border:1px solid var(--line); border-radius:14px; padding:20px; margin:12px 0 0; gap:24px; background:#fff; }
+.offers .offer-best { border-color:#8ddcc3; background:linear-gradient(110deg,#f2fcf8,#fff 65%); }
+.offers .offer-price strong { font-size:25px; letter-spacing:-.5px; }
+.offers .offer-badge { background:#d5f5e9; color:#14634d; border-radius:20px; padding:5px 10px; }
+.offers .offer .affiliate-cta { min-height:48px; }
+@media (max-width:600px) {
+  .offer-verification { padding:14px; gap:10px; }
+  .offers .offer { padding:16px; gap:16px; }
+  .offers .offer-price strong { font-size:23px; }
+}

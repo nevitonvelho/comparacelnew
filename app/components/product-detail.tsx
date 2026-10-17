@@ -71,12 +71,16 @@ export function ProductDetail({ slug, product: serverProduct, history = [], hist
     {hasFullDescription && <details className="product-description-full"><summary>Ver descrição completa</summary><div className="product-description">{description}</div></details>}
     <section id="ofertas-produto" className="offers">
       <span className="eyebrow">COMPARE AS LOJAS</span><h2>Onde comprar {product.name}</h2>
-      <p>Ofertas com preço cadastrado aparecem primeiro, do menor para o maior. Confira as condições de cada loja.</p>
+      <p className="offers-intro">Compare as ofertas do menor para o maior preço e escolha onde comprar.</p>
+      <aside className="offer-verification" aria-label="Confira o produto no anúncio">
+        <span className="offer-verification-icon" aria-hidden="true"><UiIcon name="check" /></span>
+        <div><strong>Confira se é o produto certo para você</strong><p>Antes de comparar ou comprar, confira o modelo, a versão, a voltagem, as medidas e as características no anúncio da loja. Informações, imagens e especificações podem mudar ou apresentar diferenças entre anúncios. Confirme também o preço final, o frete e as condições de pagamento.</p></div>
+      </aside>
       <AffiliateDisclosure />
       {offers.map(offer => <div className={`offer ${offer.price !== null && offer.price === lowestPrice ? "offer-best" : ""}`} key={offer.id}>
         <div>
           <StoreIdentity name={offer.store} /><PriceUpdated dates={[offer.priceUpdatedAt]} />
-          {knownPriceCount > 1 && offer.price !== null && offer.price === lowestPrice && <small className="offer-badge">Menor preço entre as ofertas cadastradas</small>}
+          {knownPriceCount > 1 && offer.price !== null && offer.price === lowestPrice && <small className="offer-badge">Menor preço cadastrado</small>}
         </div>
         <div className="offer-price">
           <strong>{offer.price === null ? "Consultar preço" : money(offer.price)}</strong>
