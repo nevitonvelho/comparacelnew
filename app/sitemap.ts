@@ -1,3 +1,4 @@
+import { institutionalPages } from "@/lib/institutional";
 import { getServerCategorySettings } from "@/lib/server-public-data";
 import { unstable_cache } from "next/cache";
 import { publicCacheOptions } from "@/lib/public-cache";
@@ -19,6 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = await getServerProducts();
   const comparisons = await readComparisonIds();
   const entries: MetadataRoute.Sitemap = ["/", "/catalogo", "/comparar", "/comunidade"].map(path => ({ url: absoluteUrl(path), changeFrequency: "weekly", priority: path === "/" ? 1 : 0.7 }));
+  entries.push(...institutionalPages.map(page => ({ url: absoluteUrl(page.path), changeFrequency: "monthly" as const, priority: 0.4 })));
   for (const category of (await getServerCategorySettings()).categories.map(item=>item.id)) if (products.some(product => product.category === category)) entries.push({ url: absoluteUrl(`/${category}`), changeFrequency: "weekly", priority: 0.7 });
   // Next interpolates image URLs directly into XML; escape query separators.
   for (const product of products) entries.push({ url: absoluteUrl(`/produto/${product.id}`), ...(productModifiedAt(product) ? { lastModified: productModifiedAt(product) } : {}), ...(product.imageUrl ? { images: [product.imageUrl.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;")] } : {}), changeFrequency: "weekly", priority: 0.8 });

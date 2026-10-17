@@ -115,3 +115,11 @@ Após instalar esta versão, recarregue a extensão e as abas de busca. É neces
 ### Correção 1.3.1
 
 Anúncios patrocinados com links de rastreamento também são consultados pelo título, como possíveis correspondentes. O indicador no canto inferior mostra o resultado da consulta e permite verificar novamente. Abrir o popup em uma busca ativa as marcações também na aba atual.
+
+### Visualização 1.3.2
+
+Os resultados exibem uma etiqueta compacta sobre a imagem, sem aumentar a altura do card. Clique na etiqueta para abrir os detalhes e links; clique fora ou pressione Esc para fechar. O status de sucesso no canto da página também foi reduzido.
+
+### Coleta 1.3.3
+
+Páginas de produto /up/MLBU… passam pela coleta normal, em vez de serem confundidas com buscas. Os links abertos pelas etiquetas preservam os parâmetros e fragmentos originais para manter a identificação do anúncio.

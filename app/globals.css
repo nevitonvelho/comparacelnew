@@ -1374,3 +1374,35 @@ h3 { font-weight:600; }
 .price-history-legend strong,
 .price-history-selection strong,
 .price-history-summary strong { color:var(--product-price); }
+
+/* Institutional pages and persistent footer links. */
+.footer-institutional { display:flex; flex-wrap:wrap; gap:12px 24px; padding:0 0 28px; font-size:12px; font-weight:500; }
+.footer-institutional a { padding:0; color:var(--muted); line-height:1.7; }
+.institutional-page { padding-top:28px; padding-bottom:32px; }
+.institutional-breadcrumb { display:flex; flex-wrap:wrap; gap:10px; font-size:12px; font-weight:400; color:var(--muted); }
+.institutional-breadcrumb a { padding:0; color:var(--brand-blue); }
+.institutional-header { max-width:820px; padding:38px 0 32px; }
+.institutional-header h1 { font-size:clamp(30px,4vw,46px); }
+.institutional-header p { font-size:16px; margin:0 0 18px; }
+.institutional-header small { color:var(--muted); font-size:12px; }
+.institutional-layout { display:grid; grid-template-columns:230px minmax(0,1fr); gap:48px; border-top:1px solid var(--line); padding-top:32px; }
+.institutional-nav { display:flex; flex-direction:column; align-items:stretch; gap:6px; font-size:13px; }
+.institutional-nav a { padding:12px 14px; border-radius:8px; line-height:1.5; }
+.institutional-nav a[aria-current="page"] { background:var(--brand-soft); color:var(--brand-blue); box-shadow:none; }
+.institutional-content { max-width:780px; min-width:0; overflow-wrap:anywhere; }
+.institutional-content section { margin-bottom:32px; }
+.institutional-content h2 { font-size:22px; letter-spacing:-.5px; margin:0 0 14px; }
+.institutional-content p, .institutional-content li { font-size:14px; line-height:1.9; color:var(--muted); }
+.institutional-content p { margin:12px 0; }
+.institutional-content ul { padding-left:22px; }
+.institutional-content li { margin-bottom:12px; }
+.institutional-content strong { color:var(--ink); }
+.institutional-content a:not(.button) { color:var(--brand-blue); text-decoration:underline; text-underline-offset:3px; }
+.institutional-content a.button { color:#fff; }
+@media(max-width:760px) {
+  .institutional-layout { grid-template-columns:minmax(0,1fr); gap:28px; }
+  .institutional-nav { flex-direction:row; flex-wrap:wrap; gap:8px; }
+  .institutional-nav a { padding:8px 10px; background:var(--soft); font-size:12px; }
+  .institutional-header { padding-top:28px; }
+  .footer-institutional { gap:12px 20px; }
+}

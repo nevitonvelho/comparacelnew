@@ -264,3 +264,11 @@ Use **Atualizar apenas o preço** na extensão, com a página do produto aberta.
 ### Compatibilidade de autenticação na Vercel
 
 O override `jwks-rsa > jose = 5.10.0` mantém o carregamento CommonJS usado pelo Firebase Admin compatível com runtimes sem `require(ESM)`. Sem esse ajuste, o carregamento de `firebase-admin/auth` pode falhar com `ERR_REQUIRE_ESM`, antes de atender páginas ou APIs. Referência: https://github.com/firebase/firebase-admin-node/issues/3181. O teste `tests/firebase-runtime.test.mjs` carrega Auth/App Check com `--no-experimental-require-module` e verifica a conversão de uma chave RSA de JWKS para PEM.
+
+### Páginas institucionais
+
+As rotas `/sobre`, `/contato`, `/politica-de-privacidade`, `/politica-de-cookies`, `/termos-de-uso` e `/transparencia` estão vinculadas no rodapé e no sitemap. O contato público padrão é `nevitonvelho01@gmail.com`. Para substituí-lo, configure `SITE_CONTACT_EMAIL` e gere um novo build para atualizar as páginas estáticas. Não há formulário ou envio de mensagens pelo servidor; o contato abre o cliente de e-mail do visitante.
+
+Antes de solicitar a revisão do AdSense, confirme a identificação do responsável e as práticas reais descritas nas políticas, incluindo os fornecedores/etiquetas habilitados no Tag Manager e as configurações de anúncios. As páginas não implementam gestão de consentimento. Configure a solução apropriada no AdSense em **Privacidade e mensagens**, inclusive CMP certificada para os casos abrangidos pelos requisitos do Google, e valide o bloqueio/consentimento de etiquetas conforme necessário. A existência das páginas não garante aprovação.
+
+Referências oficiais: [conteúdo obrigatório da política de privacidade](https://support.google.com/adsense/answer/1348695?hl=pt-BR), [preparação do site](https://support.google.com/adsense/answer/7299563?hl=pt-BR) e [requisitos de CMP](https://support.google.com/adsense/answer/13554116?hl=pt-BR).

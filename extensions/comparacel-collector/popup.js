@@ -81,7 +81,7 @@ collect.addEventListener("click", async () => {
     const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
     const url=new URL(tab?.url || "about:blank");
     if (!tab?.id || url.protocol!=="https:" || !["mercadolivre.com.br","www.mercadolivre.com.br","produto.mercadolivre.com.br","lista.mercadolivre.com.br","amazon.com.br","www.amazon.com.br"].includes(url.hostname)) throw new Error("Abra um produto no Mercado Livre ou Amazon e tente novamente.");
-    if((url.hostname.includes("amazon") && url.pathname === "/s") || url.hostname === "lista.mercadolivre.com.br" || (url.hostname.includes("mercadolivre") && !/MLB-?\d+/i.test(url.pathname))) {
+    if((url.hostname.includes("amazon") && url.pathname === "/s") || url.hostname === "lista.mercadolivre.com.br" || (url.hostname.includes("mercadolivre") && !/MLB(?:U|-)?\d+/i.test(url.pathname))) {
       await chrome.scripting.insertCSS({target:{tabId:tab.id},files:["listing.css"]});
       await chrome.scripting.executeScript({target:{tabId:tab.id},files:["listing.js"]});
       status.textContent="Os resultados da busca mostram as marcações do Comparacel. Abra o anúncio desejado e clique na extensão para adicionar ou atualizar a oferta. Se as marcações não aparecerem, recarregue esta página após atualizar a extensão.";

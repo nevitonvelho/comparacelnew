@@ -33,34 +33,53 @@
       if(!/(^|\.)mercadolivre\.com\.br$/.test(url.hostname))return null;
       // Ads can use /mclics/clicks rather than a product URL. Keep the
       // tracking link to open it and request suggestions using its title.
-      pageUrl = /MLB-?\d+/i.test(url.pathname) ? `${url.origin}${url.pathname}` : url.href.split('#')[0].slice(0,4500);
+      pageUrl = url.href.slice(0,4500);
     }
     return {pageUrl, name: title.textContent.trim().replace(/\s+/g, " ").slice(0, 300)};
   }
   function render(card, item, response) {
     let box = card.querySelector('.comparacel-listing');
-    if(!box){box = document.createElement('div');box.className = 'comparacel-listing';card.append(box);}
+    if(!box){box = document.createElement('div');box.className = 'comparacel-listing';const surface = card.querySelector('.poly-card, .s-card-container') || card;surface.classList.add('comparacel-product-surface');surface.append(box);}
     box.replaceChildren();
     const result = response.results?.find(result => result.pageUrl === item.pageUrl);
     const product = result?.product || result?.suggestions?.[0];
     box.dataset.state = result?.product ? 'exact' : product ? 'suggestion' : 'none';
+    const badge = document.createElement('button');
+    badge.type = 'button';badge.className = 'comparacel-product-badge';
+    const current = amazon ? 'Amazon' : 'Mercado Livre';
+    const hasCurrent = product?.offers.some(offer => {
+      try {const host = new URL(offer.url).hostname;return amazon ? /(^|\.)amazon\.com\.br$/.test(host) || host === 'amzn.to' : /(^|\.)mercadolivre\.com(?:\.br)?$/.test(host) || host === 'meli.la';}catch{return false;}
+    });
+    badge.textContent = response.error ? 'CC · Erro na consulta' : result?.conflict ? 'CC · Revisar vínculo' : result?.product ? '✓ Na sua base' : product ? hasCurrent ? '≈ Possível cadastro' : `+ Adicionar ${current}` : 'CC · Sem correspondência';
+    badge.title = 'Comparacel — clique para ver detalhes e ações';
+    badge.setAttribute('aria-expanded','false');
+    const details = document.createElement('div');details.className = 'comparacel-product-details';details.setAttribute('popover','auto');
+    badge.addEventListener('click', event => {
+      event.preventDefault();event.stopPropagation();
+      if(details.matches(':popover-open')){details.hidePopover();badge.setAttribute('aria-expanded','false');return;}
+      const rect = badge.getBoundingClientRect();
+      details.style.left = `${Math.max(8,Math.min(rect.left,innerWidth - 296))}px`;
+      details.style.top = `${Math.max(8,Math.min(rect.bottom + 6,innerHeight - 290))}px`;
+      details.showPopover();badge.setAttribute('aria-expanded','true');
+    });
+    details.addEventListener('toggle', () => badge.setAttribute('aria-expanded',String(details.matches(':popover-open'))));
+    box.append(badge,details);
     const heading = document.createElement('strong');
     heading.textContent = response.error ? 'Comparacel: consulta indisponível' : result?.conflict ? 'Comparacel: anúncio em mais de uma ficha' : result?.product ? 'Comparacel: anúncio já cadastrado' : product ? 'Comparacel: possível produto cadastrado' : 'Comparacel: nenhum correspondente encontrado';
-    box.append(heading);
+    details.append(heading);
     const detail = document.createElement('span');
     detail.textContent = response.error || (product ? product.name : 'Abra o anúncio e use a extensão para importar.');
-    box.append(detail);
+    details.append(detail);
     if(product) {
       const stores = new Set(product.offers.map(offer => {
         try { const host = new URL(offer.url).hostname;return /(^|\.)amazon\.com\.br$/.test(host) || host === 'amzn.to' ? 'Amazon' : /(^|\.)mercadolivre\.com(?:\.br)?$/.test(host) || host === 'meli.la' ? 'Mercado Livre' : ''; }catch{return '';}
       }).filter(Boolean));
       const info = document.createElement('span');
-      const current = amazon ? 'Amazon' : 'Mercado Livre';
       info.textContent = `Lojas: ${[...stores].join(', ') || 'sem oferta destas lojas'}. ${stores.has(current) ? 'Pode atualizar a oferta desta loja.' : `Pode adicionar ${current} à mesma ficha.`} ${result.product ? '' : 'Confira modelo, capacidade e versão.'}`;
-      box.append(info);
-      const edit = document.createElement('a');edit.href = new URL(product.editPath, response.origin).href;edit.target = '_blank';edit.rel = 'noopener noreferrer';edit.textContent = 'Ver ficha no painel';box.append(edit);
+      details.append(info);
+      const edit = document.createElement('a');edit.href = new URL(product.editPath, response.origin).href;edit.target = '_blank';edit.rel = 'noopener noreferrer';edit.textContent = 'Ver ficha no painel';details.append(edit);
     }
-    const open = document.createElement('a');open.href = item.pageUrl;open.textContent = product ? 'Abrir anúncio e usar extensão' : 'Abrir anúncio';box.append(open);
+    const open = document.createElement('a');open.href = item.pageUrl;open.textContent = product ? 'Abrir anúncio e usar extensão' : 'Abrir anúncio';details.append(open);
   }
   async function scan() {
     if(busy)return;
@@ -82,6 +101,9 @@
     try {
       const response = await chrome.runtime.sendMessage({type:'comparacel-listing', entries:[...pending.values()]});
       if(!response)throw new Error('Sem resposta da extensão. Recarregue a extensão e esta página.');
+      panel.dataset.state = response.error ? 'error' : 'success';
+      retry.textContent = response.error ? 'Tentar novamente' : 'CC · Busca verificada ↻';
+      retry.title = 'Comparacel — verificar produtos novamente';
       label.textContent = response.error ? `Comparacel: ${response.error}` : 'Comparacel: busca verificada. Veja as marcações nos produtos.';
       for(const [url] of pending)cache.set(url,response);
       for(const card of cards){const item = entry(card);if(item && pending.has(item.pageUrl)){render(card,item,response);card.dataset.comparacelUrl = item.pageUrl;}}

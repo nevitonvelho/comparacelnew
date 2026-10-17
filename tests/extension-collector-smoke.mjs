@@ -38,6 +38,17 @@ try {
     globalThis.fetch=async()=>{await new Promise(resolve=>setTimeout(resolve,200));return new Response(JSON.stringify({categories:[{id:'celulares',name:'Celulares'}]}),{headers:{'Content-Type':'application/json'}});};
   },mercado);
   await popup.addScriptTag({content:await readFile('extensions/comparacel-collector/popup.js','utf8')});
+  await popup.waitForFunction(()=>!document.querySelector('#preview').hidden);
+  await popup.evaluate(()=>{
+    globalThis.chrome.tabs.query=async()=>[{id:1,url:'https://www.mercadolivre.com.br/ar-condicionado/up/MLBU4135027763#polycard_client=search-desktop'}];
+    globalThis.chrome.scripting.insertCSS=async()=>{throw new Error('Página MLBU não é busca');};
+  });
+  await popup.locator('#collect').click();
+  await popup.waitForFunction(()=>!document.querySelector('#collect').disabled);
+  assert.equal(await popup.locator('#preview').isVisible(),true,'MLBU product pages must collect product information');
+  assert.equal(await popup.locator('#name').textContent(),'Lavadora');
+  await popup.evaluate(url=>{globalThis.chrome.tabs.query=async()=>[{id:1,url}];},mercado.pageUrl);
+
   await popup.locator('#key').fill('invalid');await popup.locator('#connect').click();
   assert.match(await popup.locator('#connection-status').textContent(),/Gere uma chave/);
   await popup.locator('#key').fill('ccx_'+'a'.repeat(64));await popup.locator('#connect').click();
