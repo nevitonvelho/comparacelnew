@@ -114,7 +114,7 @@ try {
   assert.equal(await popup.locator('#price').textContent(),'Preço não disponível');
   assert.equal(await popup.locator('#update-price').isDisabled(),true);
   assert.equal(await popup.locator('#mark-unavailable').isVisible(),true);
-  await popup.locator('#mark-unavailable').click();
+  // Collection automatically posts unavailable; no manual click is required.
   await popup.waitForFunction(()=>globalThis.popupFixture.requests.length===4);
   assert.equal(await popup.evaluate(()=>globalThis.popupFixture.requests[3].mode),'unavailable');
   await popup.waitForFunction(()=>!document.querySelector('#collect').disabled);
@@ -170,6 +170,23 @@ try {
   assert.equal(await reopened.locator('#product').inputValue(),'micro-ondas-me23b');
   assert.equal(await reopened.locator('#search-controls').evaluate(node=>node.open),true);
   assert.equal(await reopened.locator('#save-offer').isVisible(),true);
+  const automatic=await context.newPage();
+  await automatic.setContent(html);
+  await automatic.evaluate(capture=>{
+    globalThis.autoPosts=[];
+    const product={id:'linked',name:capture.name,category:'celulares',offers:[{id:'offer',externalId:'MLB12345',url:'https://meli.la/owner',price:100}],editPath:'/admin?produto=linked'};
+    globalThis.chrome={storage:{local:{get:async()=>({site:'http://localhost:3000',key:'ccx_'+ 'a'.repeat(64)}),set:async()=>{}}},tabs:{query:async()=>[{id:1,url:capture.pageUrl}]},scripting:{executeScript:async options=>options.files?[]:[{result:{data:{...capture,price:null}}}]}};
+    globalThis.fetch=async(_url,options)=>{
+      if(options.method==='POST') {globalThis.autoPosts.push(JSON.parse(options.body));return Response.json({product,message:'Oferta desativada automaticamente.'});}
+      if(String(_url).includes('pageUrl='))return Response.json({product,suggestions:[]});
+      return Response.json({categories:[{id:'celulares',name:'Celulares'}]});
+    };
+  },mercado);
+  await automatic.addScriptTag({content:await readFile('extensions/comparacel-collector/popup.js','utf8')});
+  await automatic.waitForFunction(()=>document.querySelector('#status').textContent.includes('Oferta desativada automaticamente.'));
+  const autoPosts=await automatic.evaluate(()=>globalThis.autoPosts);
+  assert.equal(autoPosts.length,1);assert.equal(autoPosts[0].mode,'unavailable');assert.equal(autoPosts[0].productId,'linked');
+  console.log('Anúncio vinculado sem preço: desativação automática sem clique: OK');
   console.log('Popup reaberto: coleta, afiliado, busca, seleção e busca expandida preservados: OK');
   console.log('Busca manual: resultado visível junto à busca e primeira ficha selecionada: OK');
   console.log('ME23B: identificação automática usando API anterior, sem digitar: OK');

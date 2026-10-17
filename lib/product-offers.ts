@@ -1,14 +1,14 @@
 import type { Product, Offer } from "./product-model";
 
 function isActiveOffer(offer: Offer) {
-  return offer.available && !!offer.url?.trim();
+  return offer.available && !!offer.url?.trim() && typeof offer.price === "number" && Number.isFinite(offer.price) && offer.price > 0;
 }
 
 export function hasActiveOffer(product: Pick<Product, "offers">): boolean {
   return product.offers.some(isActiveOffer);
 }
 
-// Compare only purchasable offers; unknown prices always come last.
+// Only offers with a confirmed positive price can monetize public pages.
 export function purchaseOffers(product: Pick<Product, "offers">): Offer[] {
   return product.offers.filter(isActiveOffer).sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
 }

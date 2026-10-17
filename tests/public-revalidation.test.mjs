@@ -18,6 +18,7 @@ const dependencies = {
   './public-cache': url('export const PUBLIC_CATALOG_TAG="public-catalog"; export const publicCacheOptions={revalidate:1800,tags:[PUBLIC_CATALOG_TAG]};'),
   './firebase/admin': url('export const getAdminDatabase = () => { throw new Error("Revalidation must not read Firestore"); };'),
   './product-data': url('export const productFromData = () => {}; export const PUBLIC_PRODUCT_FIELDS=[];'),
+  './product-offers': url(ts.transpileModule(await readFile('lib/product-offers.ts', 'utf8'), {compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText),
   './product-model': url('export const comparisonSlug = () => {};'),
 };
 for (const [name, replacement] of Object.entries(dependencies)) {

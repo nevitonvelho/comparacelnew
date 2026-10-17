@@ -124,6 +124,13 @@ function savedAffiliateForSource(product) {
   const page=captured?.pageUrl || "";
   const shopee=page.match(/\/product\/(\d+)\/(\d+)/) ?? page.match(/-i\.(\d+)\.(\d+)/);
   const identity=captured?.source==="shopee" && shopee ? `SHP${shopee[1]}-${shopee[2]}` : captured?.source==="amazon" ? page.match(/\/(?:dp|gp\/product|gp\/aw\/d)\/([A-Z0-9]{10})/i)?.[1].toUpperCase() : page.replaceAll("-", "").match(/MLB\d+/i)?.[0].toUpperCase();
+  if(captured?.source==="mercadolivre") {
+    const url=new URL(page);
+    const item=url.pathname.match(/^\/MLB-(\d+)(?:-|\/|$)/)?.[1];
+    const selected=url.searchParams.get("pdp_filters")?.match(/(?:^|[|,])item_id:(MLB\d+)(?:$|[|,])/i)?.[1] || url.searchParams.get("wid") || new URLSearchParams(url.hash.slice(1)).get("wid");
+    const itemIdentity=item ? `item-MLB${item}` : selected && /^MLB\d+$/.test(selected) ? `item-${selected}` : null;
+    if(itemIdentity)return product?.offers?.find(offer=>offer.externalId===itemIdentity || offer.url===page);
+  }
   return product?.offers?.find(offer=>identity && (offer.externalId?.replace(/^item-/, "")===identity || offer.url===page || offer.url.replaceAll("-", "").includes(identity)));
 }
 function renderActions() {
@@ -135,6 +142,7 @@ function renderActions() {
   document.querySelector("#update-price").hidden=!(product && savedAffiliateForSource(product));
   document.querySelector("#update-full").hidden=!product;
   document.querySelector("#save-offer").hidden=!product;
+  document.querySelector("#save-offer").textContent=(exact || savedAffiliateForSource(product)) ? "Atualizar este anúncio e afiliado" : "Adicionar outra oferta a este produto";
   document.querySelector("#update-help").hidden=!product;
   document.querySelector("#category").disabled=Boolean(product);
   document.querySelector("#search-controls").hidden=Boolean(matchedProduct);
@@ -185,6 +193,11 @@ async function identifyProduct() {
   document.querySelector("#search-controls").open=false;
   document.querySelector("#match-status").textContent=matchedProduct?`Já cadastrado: ${matchedProduct.name}. Escolha o que deseja atualizar.`:suggested?`Possível produto já cadastrado: ${suggested.name}. Confira modelo, capacidade e versão. Para adicionar este anúncio como outra oferta, informe o link de afiliado. As ofertas já cadastradas serão mantidas.`:"Nenhum produto equivalente encontrado automaticamente. Você pode importar um novo produto ou abrir a busca abaixo.";
   persistDraft();
+  // Only an exact linked announcement can be disabled automatically.
+  // Suggestions by title must never change an existing product's availability.
+  if(snapshot.price===null && matchedProduct && snapshot===captured && version===lookupVersion) {
+    await saveProduct("unavailable");
+  }
 }
 async function searchProducts() {
   if(saving)return;

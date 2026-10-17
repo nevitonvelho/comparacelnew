@@ -25,7 +25,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
     const db=getAdminDatabase();const data=(await db.doc(`products/${id}`).get()).data();
     if(!data)throw new AdminError("Produto não encontrado.",404);
     const offer=(Array.isArray(data.offers)?data.offers:[]).find(item=>String(item.id)===input.offerId);
-    if(!offer?.url || offer.is_available!==true)throw new AdminError("Oferta indisponível para atualização.");
+    if(!offer?.url)throw new AdminError("Oferta indisponível para atualização.");
     const store=(await db.doc(`stores/${offer.storeId ?? offer.store}`).get()).data();
     const name=String(store?.name ?? offer.storeName ?? "").toLowerCase();
     const source=name.includes("amazon")?"amazon":name.includes("mercado livre")?"mercadolivre":null;
@@ -89,7 +89,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
     if(source==="mercadolivre" && price!==null)await writeMercadoPriceCache(db,entry,cacheSource,price,priceCondition,Date.now()).catch(()=>{});
     if(result.changed)invalidateServerCatalog();
     revalidatePath(`/produto/${id}`);
-    return NextResponse.json({...result,attempts,message:`${source==="mercadolivre" && price===null ? "Preço não retornado para a oferta identificada; valor anterior preservado. Informe a URL do anúncio específico, com o identificador MLB do vendedor, ou edite o preço manualmente." : result.message}${source==="mercadolivre" && !usedBrowser && entry.kind!=="item" ? " Referência do catálogo; descontos no Pix e ofertas de outros vendedores podem diferir." : ""}${sourceWarning}${priceCondition==="pix"?" Preço no Pix.":""} (${attempts} tentativa${attempts===1?"":"s"}.)`},{headers:adminHeaders});
+    return NextResponse.json({...result,attempts,message:`${source==="mercadolivre" && price===null ? result.message : result.message}${source==="mercadolivre" && !usedBrowser && entry.kind!=="item" ? " Referência do catálogo; descontos no Pix e ofertas de outros vendedores podem diferir." : ""}${sourceWarning}${priceCondition==="pix"?" Preço no Pix.":""} (${attempts} tentativa${attempts===1?"":"s"}.)`},{headers:adminHeaders});
   }catch(error){
     if(error instanceof AdminError && error.retryAfterMs!==undefined)return NextResponse.json({error:error.message,retryAfterMs:error.retryAfterMs},{status:429,headers:{...adminHeaders,"Retry-After":String(Math.ceil(error.retryAfterMs/1000))}});
     if(error instanceof AdminError && sourceGuard && sourceAccessBlocked(error.message)) {

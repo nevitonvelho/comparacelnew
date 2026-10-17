@@ -110,7 +110,7 @@ test('refresh only changes selected offer, keeps affiliate and records changed p
  assert.equal(data.offers[0].url,'affiliate');assert.equal(data.offers[1].priceCents,15000);assert.equal(data.bestPriceCents,9000);
  assert.equal(histories.length,1);assert.equal(histories[0].previousPriceCents,10000);
  assert.equal((await saveRefreshedPrice(db,{uid:'owner'},'p','a','affiliate',90,9000)).changed,false);assert.equal(histories.length,1);
- assert.equal((await saveRefreshedPrice(db,{uid:'owner'},'p','a','affiliate',null,9000)).changed,false);assert.equal(data.bestPriceCents,9000);
+ assert.equal((await saveRefreshedPrice(db,{uid:'owner'},'p','a','affiliate',null,9000)).changed,true);assert.equal(data.bestPriceCents,15000);assert.equal(data.offers[0].is_available,false);
  await assert.rejects(saveRefreshedPrice(db,{uid:'owner'},'p','a','changed-url',80,9000),error=>error.status===409);
  await assert.rejects(saveRefreshedPrice(db,{uid:'owner'},'p','a','affiliate',80,10000),error=>error.status===409);
 });
@@ -178,13 +178,28 @@ test('same-store offers retain independent IDs and reject duplicated links or an
 });
 
 test('importing a second same-store offer scopes identity, payment condition and history to that offer',async()=>{
- let data={adminRevision:0,name:'Teste',offers:[{id:'first',storeId:'amazon',url:'https://amzn.to/first',external_id:'B000000001',priceCents:10000,is_available:true,priceCondition:'standard'}]};
+ let data={isActive:true,is_active:true,adminRevision:0,name:'Teste',offers:[{id:'first',storeId:'amazon',url:'https://amzn.to/first',external_id:'B000000001',priceCents:10000,is_available:true,priceCondition:'standard'}]};
  const histories=[];
  const db={collection:kind=>({doc:id=>({kind,id}),where:()=>({limit:()=>({query:true})})}),runTransaction:async run=>run({get:async ref=>ref.query?{empty:false,docs:[{id:'category',data:()=>({})}]}:{exists:ref.kind==='products',data:()=>data},getAll:async(...refs)=>refs.map(ref=>({exists:true,id:ref.id,data:()=>({name:ref.id})})),set:(ref,patch)=>{if(ref.kind==='products')data={...data,...patch};},create:(ref,value)=>{if(ref.kind==='priceHistory')histories.push(value);}})};
  const first={id:'first',storeId:'amazon',url:'https://amzn.to/first',externalId:'B000000001',price:100,available:true};
  const second={id:'second',storeId:'amazon',url:'https://amzn.to/second',externalId:'B000000002',price:90,available:true};
- await saveAdminProduct(db,account,{...product,offers:[first,second]},false,10000,{key:'amazon-B000000002',externalId:'B000000002',storeId:'amazon',offerId:'second',priceCondition:'pix'});
+ await saveAdminProduct(db,account,{...product,isActive:true,offers:[first,second]},false,10000,{key:'amazon-B000000002',externalId:'B000000002',storeId:'amazon',offerId:'second',priceCondition:'pix'});
  assert.equal(data.offers[0].external_id,'B000000001');assert.equal(data.offers[0].priceCondition,'standard');assert.equal(data.offers[0].priceCheckedAt,undefined);
  assert.equal(data.offers[1].external_id,'B000000002');assert.equal(data.offers[1].priceCondition,'pix');assert.equal(data.offers[1].priceCheckedAt.toMillis(),10000);
  assert.equal(data.bestPriceCents,9000);assert.equal(histories.length,1);assert.equal(histories[0].offerId,'second');
+ assert.equal(data.isActive,true);assert.equal(data.is_active,true);
+});
+
+test('a missing price disables the last offer and product until manual review',async()=>{
+ let data={isActive:true,is_active:true,name:'Produto',offers:[{id:'a',storeId:'amazon',url:'affiliate',priceCents:10000,price:100,is_available:true}],adminRevision:0};
+ const histories=[];
+ const db={doc:id=>({id}),collection:kind=>({doc:()=>({kind})}),runTransaction:async run=>run({get:async ref=>ref.id.startsWith('priceHistory/')?{exists:false}:{exists:true,data:()=>data},update:(_ref,patch)=>{data={...data,...patch};},create:(ref,value)=>{if(ref.kind==='priceHistory')histories.push(value);}})};
+ const result=await saveRefreshedPrice(db,account,'p','a','affiliate',null,10000);
+ assert.equal(result.changed,true);
+ assert.equal(data.isActive,false);assert.equal(data.is_active,false);
+ assert.equal(data.offers[0].is_available,false);assert.ok(data.offers[0].unavailableSince);
+ assert.equal(data.bestPriceCents,null);assert.deepEqual(histories,[]);
+ await saveRefreshedPrice(db,account,'p','a','affiliate',90,10000);
+ assert.equal(data.offers[0].is_available,true);assert.equal(data.offers[0].unavailableSince,null);
+ assert.equal(data.bestPriceCents,9000);assert.equal(data.isActive,false);
 });

@@ -137,3 +137,11 @@ Abra a página do produto em **shopee.com.br**, aguarde o preço carregar e sele
 URLs `/product/ID-DA-LOJA/ID-DO-PRODUTO` e `-i.ID-DA-LOJA.ID-DO-PRODUTO` são aceitas. A coleta inclui preço, indicação de Pix quando confirmada, nome, marca, descrição, características e imagem disponíveis na página. Parcelas e preços riscados são ignorados; faixas de preço pedem uma variação com preço único. Páginas de login ou verificação devem ser concluídas no navegador antes da coleta. O suporte Shopee funciona pela página aberta na extensão, inclusive para conferir preços em lote; o importador automático de links do servidor continua para Amazon e Mercado Livre.
 
 Para atualizar uma instalação existente, substitua os arquivos na pasta da extensão pelos do novo pacote e clique em **Recarregar** em `chrome://extensions`.
+
+### Ofertas 1.5.2
+
+Anúncios de vendedores diferentes no mesmo catálogo do Mercado Livre são identificados pelo `pdp_filters=item_id:MLB…` ou `wid=MLB…` da URL completa. Cada anúncio mantém seu próprio link de afiliado. A extensão mostra **Adicionar outra oferta a este produto** para anúncios novos e **Atualizar este anúncio e afiliado** para anúncios já vinculados.
+
+### Indisponibilidade automática 1.5.3
+
+Ao coletar uma página sem preço, a extensão marca automaticamente a oferta como indisponível quando o anúncio já está vinculado exatamente ao cadastro. Sugestões pelo nome não desativam ofertas. A atualização em lote também faz essa marcação automaticamente. Falhas de acesso ou verificação permanecem como erros para revisão.

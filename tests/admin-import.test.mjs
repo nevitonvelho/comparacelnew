@@ -286,3 +286,19 @@ test('Shopee URLs distinguish sellers/items, support original slugs and reject f
  assert.equal(allowedImportFetchUrl('https://down-br.img.susercontent.com/file/example','image').hostname,'down-br.img.susercontent.com');
  assert.throws(()=>allowedImportFetchUrl('https://down-br.img.susercontent.com.evil.test/file/example','image'));
 });
+
+test('Mercado Livre seller offers in the same catalog retain separate affiliate links', () => {
+  const existing = {id:'produto',revision:0,name:'Produto',description:'',brandId:'marca',category:'celulares',imageUrl:'',isActive:true,overallScore:0,metaTitle:'',metaDescription:'',specs:[],highlights:[],offers:[]};
+  let product = existing;
+  for (const [item, affiliate] of [['MLB11111','first'], ['MLB22222','second']]) {
+    const entry = parseImportLine(`https://meli.la/${affiliate} https://www.mercadolivre.com.br/p/MLB99999?pdp_filters=item_id:${item}`, 'mercadolivre');
+    assert.equal(entry.kind, 'item');
+    assert.equal(entry.externalId, item);
+    product = mergeImportedProduct({name:'Produto',brand:'Marca',description:'',specs:[],price:100,externalId:`item-${entry.externalId}`,buyUrl:entry.buyUrl}, product, 'celulares','marca','mercado-livre','','offer');
+  }
+  assert.equal(product.offers.length, 2);
+  assert.deepEqual(product.offers.map(offer => offer.url), ['https://meli.la/first','https://meli.la/second']);
+  assert.equal(parseImportLine('https://www.mercadolivre.com.br/p/MLB99999?wid=MLB33333','mercadolivre').externalId, 'MLB33333');
+  assert.equal(parseImportLine('https://www.mercadolivre.com.br/p/MLB99999#wid=MLB44444','mercadolivre').externalId, 'MLB44444');
+  assert.equal(parseImportLine('https://www.mercadolivre.com.br/p/MLB99999','mercadolivre').externalId, 'MLB99999');
+});

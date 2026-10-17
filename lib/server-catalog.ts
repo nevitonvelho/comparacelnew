@@ -5,6 +5,7 @@ import { unstable_cache, revalidateTag, revalidatePath } from "next/cache";
 import { PUBLIC_CATALOG_TAG, publicCacheOptions } from "./public-cache";
 import { getAdminDatabase } from "./firebase/admin";
 import { productFromData, PUBLIC_PRODUCT_FIELDS } from "./product-data";
+import { hasActiveOffer } from "./product-offers";
 import { comparisonSlug, type Product } from "./product-model";
 
 // Explicit Data Cache works with the existing dynamic layout, without enabling
@@ -34,7 +35,7 @@ export const getServerProducts = cache(async (): Promise<Product[]> => {
     products.push(...batch.products);
     after = batch.next;
   } while (after);
-  return products.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  return products.filter(hasActiveOffer).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 });
 export async function getServerProduct(id: string) {
   return (await getServerProducts()).find(product => product.id === id);

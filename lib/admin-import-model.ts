@@ -33,10 +33,12 @@ export function parseImportLine(line: string, source: ImportSource): ImportEntry
     if (url.hostname === "meli.la") continue;
     const up = url.pathname.match(/\/up\/(MLBU\d+)(?:\/|$)/);
     const directItem = url.pathname.match(/^\/MLB-(\d+)(?:-|\/|$)/);
-    if (!up && !directItem) continue;
+    const catalog = /\/p\/MLB\d+(?:\/|$)/.test(url.pathname);
+    if (!up && !directItem && !catalog) continue;
     const hash = new URLSearchParams(url.hash.slice(1));
     const filter = url.searchParams.get("pdp_filters")?.match(/(?:^|[|,])item_id:(MLB\d+)(?:$|[|,])/i)?.[1];
     const itemId = directItem ? `MLB${directItem[1]}` : filter || url.searchParams.get("wid") || hash.get("wid");
+    if (catalog && !itemId) continue;
     if (!itemId || !/^MLB\d+$/.test(itemId)) throw new AdminError("Este link /up/MLBU… precisa conter o anúncio: copie a URL completa, incluindo pdp_filters=item_id:MLB… ou wid=MLB….");
     return { buyUrl, productUrl: url.href, externalId: itemId, kind: "item" };
   }

@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { publicCacheOptions } from "./public-cache";
 import { getAdminDatabase } from "./firebase/admin";
 import { productFromData, PUBLIC_PRODUCT_FIELDS } from "./product-data";
+import { hasActiveOffer } from "./product-offers";
 function date(value:unknown):string|undefined {
   if(typeof value==='string' && Number.isFinite(Date.parse(value)))return new Date(value).toISOString();
   const stamp=value as {toDate?:()=>Date;seconds?:number;_seconds?:number}|null;
@@ -19,5 +20,6 @@ export const readServerProduct=cache(unstable_cache(async(id:string)=>{
   const data=snapshot.data();
   if(!data || data.isActive!==true)return null;
   const product=productFromData(id,data);
+  if(!hasActiveOffer(product))return null;
   return {...product,updatedAt:date(data.updatedAt ?? data.updated_at),offers:product.offers.map((offer,index)=>({...offer,priceUpdatedAt:date(data.offers?.[index]?.priceCheckedAt)}))};
 }, ["public-product-mysql-v2"], publicCacheOptions));

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await removeExpiredUnavailableOffers(getAdminDatabase());
-    if (result.removed) invalidateServerCatalog();
+    if (result.productsChanged) invalidateServerCatalog();
     return NextResponse.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Não foi possível limpar ofertas expiradas." }, { status: 500, headers: { "Cache-Control": "no-store" } });

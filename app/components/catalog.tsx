@@ -19,7 +19,7 @@ export function LoadState({ variant }: { variant?: SkeletonVariant }) {
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 export function Catalog({ defaultCategory = "todas", defaultBrand = "Todas", defaultSearch = "", home = false }: { defaultCategory?: string; defaultBrand?: string; defaultSearch?: string; home?: boolean }) {
   const { categoryNames, products: catalogProducts, status, selected, message } = useCatalog();
-  const products = home ? catalogProducts.filter(hasActiveOffer) : catalogProducts;
+  const products = catalogProducts.filter(hasActiveOffer);
   const Heading = home ? "h2" : "h1";
   const [category, setCategory] = useState(defaultCategory);
   const [brand, setBrand] = useState(defaultBrand);
